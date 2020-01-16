@@ -1,0 +1,10 @@
+resolver: lts-14.17
+
+packages:
+- .
+
+# extra-deps: []
+
+ghc-options:
+  # Used by weeder
+  "$locals": -ddump-to-file -ddump-hi

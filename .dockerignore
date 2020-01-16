@@ -1,0 +1,4 @@
+*.db
+Dockerfile
+static/media
+.stack-work/
