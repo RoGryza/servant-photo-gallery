@@ -56,7 +56,7 @@ runFileStoreFS
   -> Sem (FileStore ': r) a
   -> Sem r a
 runFileStoreFS root baseURL = interpret $ \case
-  FileURL    name   -> embed $ return $ baseURL { uriPath = uriPath baseURL <> name }
+  FileURL    name   -> embed $ return $ baseURL { uriPath = uriPath baseURL <> "/" <> name }
   FileExists name   -> embed $ doesFileExist $ root </> name
   FetchFile  name   -> embed $ BL.readFile $ root </> name
   StoreFile bs name -> embed $ BL.writeFile (root </> name) bs

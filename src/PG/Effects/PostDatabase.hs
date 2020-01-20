@@ -76,7 +76,7 @@ runPostDatabaseSqlite acquire = interpret $ \case
       "SELECT p.post_id, p.post_created_at, m.file_name, m.caption, m.width, m.height \
       \ FROM posts AS p \
       \ LEFT JOIN media AS m ON p.post_id = m.post_id \
-      \ WHERE p.post_created_at <= ? \
+      \ WHERE p.post_created_at < ? \
       \ ORDER BY p.post_created_at DESC, m.media_index ASC \
       \ LIMIT ?"
       (upto, limit)

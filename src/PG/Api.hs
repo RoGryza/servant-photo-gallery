@@ -69,7 +69,7 @@ instance ToJSON TokenResponse where
 serializeJwt :: ByteString -> Text
 serializeJwt = decodeUtf8 . BL.toStrict
 
-data UploadRequest = UploadRequest { uploadRequstData :: !ByteString
+data UploadRequest = UploadRequest { uploadRequestData :: !ByteString
                                    }
 
 instance FromMultipart Mem UploadRequest where
