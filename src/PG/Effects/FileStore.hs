@@ -11,13 +11,18 @@ module PG.Effects.FileStore
   , fileExists
   , storeFile
   , runFileStoreFS
+  , runFileStoreState
   )
 where
 
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as BL
+import Data.HashMap.Lazy (HashMap)
+import qualified Data.HashMap.Lazy as HM
+import Data.Maybe
 import Network.URI
 import Polysemy
+import Polysemy.State
 import System.Directory
 import System.FilePath.Posix
 

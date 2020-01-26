@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2827713374ae897744f23ce931256ef56d8ffbbbcc6a48ea58ff6c974f15234a
+-- hash: 0f3fcd55e1d6219e165f79cdd8070850af07ca722cb523bdc80602c56d5fabc9
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
   exposed-modules:
       PG.Api
       PG.App
+      PG.Auth
       PG.Config
       PG.Effects
       PG.Effects.Auth
@@ -99,6 +100,8 @@ test-suite servant-photo-gallery-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Effects.Auth
+      Effects.FileStore
       Paths_servant_photo_gallery
   hs-source-dirs:
       test
@@ -107,6 +110,8 @@ test-suite servant-photo-gallery-test
   build-depends:
       Cabal
     , base >=4.7 && <5
+    , hedgehog
+    , network-uri
     , polysemy-plugin
     , servant-photo-gallery
   default-language: Haskell2010

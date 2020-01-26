@@ -105,4 +105,5 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - hedgehog
     - servant-photo-gallery

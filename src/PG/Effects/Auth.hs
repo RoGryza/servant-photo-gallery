@@ -11,6 +11,7 @@ module PG.Effects.Auth
   , runAuthMem
   , runAuthHtpasswd
   , parseHtpasswd
+  , writeHtpasswd
   , checkHtpasswd
   )
 where
@@ -76,6 +77,19 @@ parseHtpasswd = fmap parseLine . zip (True : repeat False) . Text.lines
       (u, p) = Text.break (== ':') ln
       user   = User {userName = u, userIsAdmin = isAdmin}
     in (user, encodeUtf8 $ Text.drop 1 p)
+
+-- | Given a salt generator and a list of @(userName, password)@ pairs, return the equivalent htpasswd
+-- contents.
+writeHtpasswd :: Monad m
+              => m ByteString -- ^ Action to generate salt
+              -> [(Text, ByteString)]
+              -> m Text
+writeHtpasswd mkSalt =
+  fmap Text.unlines . mapM writeUser
+  where
+    writeUser (name , p) = do
+      salt <- mkSalt
+      return $ name <> ":" <> decodeUtf8 (bcrypt 10 salt p)
 
 -- | Check a password against its bcrypt hash.
 --

@@ -61,7 +61,6 @@ serializeJwt = decodeUtf8 . BL.toStrict
 authServer :: ( Members '[Input UTCTime, Auth, Reader Config, Error ServerError, Embed IO] r
               , ThrowAll (ServerT a (Sem r))
               , ThrowAll (ServerT b (Sem r))
-              -- TODO clean up these constraints
               )
            => JWTSettings -> Proxy a -> Proxy b
            -> ServerT a (Sem r) -> ServerT b (Sem r) -> ServerT (AuthApi a b) (Sem r)
