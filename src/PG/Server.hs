@@ -16,15 +16,14 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.List
 import Data.Maybe
-import Data.Text.Encoding
 import Data.Time.Clock
 import qualified Data.Text as T
 import qualified Data.UUID as UUID
 import qualified Data.UUID.V4 as UUID4
 import Servant
-import Servant.Auth.Server
+import Servant.Auth.Server hiding (Auth)
 import PG.Api
-import PG.Effects.Auth
+import PG.Auth
 import PG.Effects
 import PG.Orphans ()
 import PG.Effects.FileStore
@@ -45,27 +44,12 @@ pgApp cookieCfg jwtCfg cfg =
     $ hoistServerWithContext api ctxProxy (runAppT cfg) (pgApiServer jwtCfg)
 
 pgApiServer :: JWTSettings -> ServerT PGApi App
-pgApiServer jwtCfg =
-  postTokenHandler jwtCfg
-    :<|> requireAuth (getAppInfoHandler :<|> getPostsHandler :<|> getMediaFile)
-    :<|> requireAuth (postUpload :<|> postPost)
-
-requireAuth :: ThrowAll b => b -> AuthResult a -> b
-requireAuth endpoint (Authenticated _) = endpoint
-requireAuth _        _                 = throwAll err401
-
-postTokenHandler :: JWTSettings -> TokenRequest -> App TokenResponse
-postTokenHandler jwtCfg (TokenRequest username password) = do
-  maybeUser <- checkPassword username (encodeUtf8 password)
-  user      <- case maybeUser of
-    Just u  -> return u
-    Nothing -> throw err401
-  sessionDuration <- asks cfgSessionDuration
-  expire          <- liftIO $ addUTCTime sessionDuration <$> getCurrentTime
-  etoken          <- liftIO $ makeJWT user jwtCfg $ Just expire
-  case etoken of
-    Left  _ -> throw err500
-    Right v -> return $ TokenResponse v
+pgApiServer jwtCfg = let
+    userApi = Proxy :: Proxy UserApi
+    adminApi = Proxy :: Proxy AdminApi
+  in
+    authServer jwtCfg userApi adminApi
+    (getAppInfoHandler :<|> getPostsHandler :<|> getMediaFile) (postUpload :<|> postPost)
 
 getAppInfoHandler :: App AppInfo
 getAppInfoHandler = do

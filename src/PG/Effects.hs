@@ -15,6 +15,7 @@ import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class
 import Data.Function
 import qualified Data.Text.IO as T
+import Data.Time.Clock
 import Database.SQLite.Simple hiding (Error)
 import PG.Effects.Auth
 import PG.Config
@@ -23,13 +24,14 @@ import PG.Effects.Logging
 import PG.Effects.PostDatabase
 import Polysemy
 import Polysemy.Error
+import Polysemy.Input
 import Polysemy.IO
 import Polysemy.Reader
 import Servant
 import System.IO
 
 -- | Full effect list used by the server
-type AppT m = Sem '[Auth, FileStore, PostDatabase, Reader Config, Error ServerError, Log, Embed IO, Embed m]
+type AppT m = Sem '[Input UTCTime, Auth, FileStore, PostDatabase, Reader Config, Error ServerError, Log, Embed IO, Embed m]
 -- | AppT specialized for use with Servant
 type App = AppT Handler
 
@@ -42,6 +44,7 @@ runAppT cfg@Config { cfgLogLevel, cfgDatabasePath, cfgMediaPath, cfgHtpasswd } m
     baseUrl = cfgActualBaseUrl cfg
   res <-
     m
+    & runInputSem (embed getCurrentTime)
     & runAuthHtpasswd users
     & runFileStoreFS cfgMediaPath (baseUrl { uriPath = "/static/media" })
     & runPostDatabaseSqlite (open cfgDatabasePath)

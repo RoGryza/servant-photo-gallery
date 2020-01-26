@@ -65,7 +65,7 @@ runAuthHtpasswd users = runAuthMem findUser checkHtpasswd
 -- = Other
 
 -- | Parses the contents of an htpasswd file into a list of @(user, passwordHash)@ pairs. Only
--- accepts -- bcrypt hashed passwords.
+-- accepts bcrypt hashed passwords.
 --
 -- Doesn't do any validation.
 parseHtpasswd :: Text -> [(User, ByteString)]
