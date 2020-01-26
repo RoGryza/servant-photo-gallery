@@ -42,13 +42,15 @@ instance MimeRender JPEG ByteString where
 
 -- | Gallery server API
 type PGApi = "token" :> ReqBody '[FormUrlEncoded] TokenRequest :> Post '[JSON] TokenResponse
-           :<|> Auth '[JWT] User :> ( "info" :> Get '[JSON] AppInfo
-                                      :<|> "posts" :> QueryParam "upto" UTCTime :> QueryParam "limit" Word :> Get '[JSON] [PGPost]
-                                      :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
-                                    )
-           :<|> Auth '[JWT] User :> ( "upload" :> MultipartForm Mem UploadRequest :> Post '[JSON] UploadResponse
-                                      :<|> "posts" :> ReqBody '[JSON] PostRequest :> PostCreated '[JSON] PostResponse
-                                    )
+           :<|> Auth '[JWT] User :> UserApi
+           :<|> Auth '[JWT] Admin :> AdminApi
+
+type UserApi = "info" :> Get '[JSON] AppInfo
+             :<|> "posts" :> QueryParam "upto" UTCTime :> QueryParam "limit" Word :> Get '[JSON] [PGPost]
+             :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
+
+type AdminApi = "upload" :> MultipartForm Mem UploadRequest :> Post '[JSON] UploadResponse
+                :<|> "posts" :> ReqBody '[JSON] PostRequest :> PostCreated '[JSON] PostResponse
 
 data TokenRequest = TokenRequest { tokenRequestUsername :: !Text
                                  , tokenRequestPassword :: !Text

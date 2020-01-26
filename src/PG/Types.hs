@@ -11,6 +11,7 @@ module PG.Types
   , Media
   , MediaType(..)
   , User(..)
+  , Admin(..)
   )
 where
 
@@ -63,6 +64,10 @@ data User = User { userName :: !Text
                  , userIsAdmin :: !Bool
                  } deriving (Show)
 
+-- | Admin-only user session.
+data Admin = Admin { adminName :: !Text
+                   }
+
 $(deriveJSON (jsonOpts "PG" "pgPost") ''PGPostF)
 $(deriveJSON (jsonOpts "" "media") ''MediaF)
 $(deriveJSON (jsonOpts "MediaType" ""){tagSingleConstructors = True} ''MediaType)
@@ -82,3 +87,13 @@ instance FromJWT User where
                                     }
       _ -> Left "Invalid or missing admin"
     _ -> Left "Invalid or missing sub"
+
+instance ToJWT Admin where
+  encodeJWT Admin { adminName } = encodeJWT User { userName = adminName, userIsAdmin = True }
+
+instance FromJWT Admin where
+  decodeJWT claims = do
+    user <- decodeJWT claims
+    if userIsAdmin user
+      then Right Admin { adminName = userName user }
+      else Left "User is not admin"

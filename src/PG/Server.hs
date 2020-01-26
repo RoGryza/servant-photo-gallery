@@ -48,7 +48,7 @@ pgApiServer :: JWTSettings -> ServerT PGApi App
 pgApiServer jwtCfg =
   postTokenHandler jwtCfg
     :<|> requireAuth (getAppInfoHandler :<|> getPostsHandler :<|> getMediaFile)
-    :<|> \a -> postUpload a :<|> postPost a
+    :<|> requireAuth (postUpload :<|> postPost)
 
 requireAuth :: ThrowAll b => b -> AuthResult a -> b
 requireAuth endpoint (Authenticated _) = endpoint
@@ -88,17 +88,15 @@ getMediaFile xs = do
   exists <- fileExists fileName
   if exists then fetchFile fileName else throw err404
 
-postUpload :: AuthResult User -> UploadRequest -> App UploadResponse
-postUpload (Authenticated user) (UploadRequest payload) | userIsAdmin user = do
+postUpload :: UploadRequest -> App UploadResponse
+postUpload (UploadRequest payload) = do
   reqId <- embed UUID4.nextRandom
   let filePath = UUID.toString reqId <> ".jpeg"
   storeFile payload filePath
   return $ UploadResponse filePath
-postUpload _ _ = throw err401
 
-postPost :: AuthResult User -> PostRequest -> App PostResponse
-postPost (Authenticated user) PostRequest { postRequestPath, postRequestCaption, postRequestCreatedAt }
-  | userIsAdmin user
+postPost :: PostRequest -> App PostResponse
+postPost PostRequest { postRequestPath, postRequestCaption, postRequestCreatedAt }
   = do
     exists <- fileExists postRequestPath
     unless exists $ throw err422
@@ -120,4 +118,3 @@ postPost (Authenticated user) PostRequest { postRequestPath, postRequestCaption,
         }
     insertMedia postId media
     return $ PostResponse postId createdAt
-postPost _ _ = throw err401
