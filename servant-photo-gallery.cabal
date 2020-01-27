@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0f3fcd55e1d6219e165f79cdd8070850af07ca722cb523bdc80602c56d5fabc9
+-- hash: 3ae2daa884a37b981134460179798b9eee6816b4a7ce063914eebb8be27b702b
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -32,12 +32,11 @@ library
       PG.App
       PG.Auth
       PG.Config
-      PG.Effects
       PG.Effects.Auth
+      PG.Effects.Clock
       PG.Effects.FileStore
-      PG.Effects.Logging
       PG.Effects.PostDatabase
-      PG.Orphans
+      PG.Env
       PG.Server
       PG.Types
       PG.Util
@@ -45,8 +44,8 @@ library
       Paths_servant_photo_gallery
   hs-source-dirs:
       src
-  default-extensions: DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
-  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -fplugin=Polysemy.Plugin
+  default-extensions: ConstraintKinds DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
   build-depends:
       Cabal
     , JuicyPixels
@@ -62,10 +61,9 @@ library
     , http-types
     , jose
     , lens
+    , monad-logger
     , mtl
     , network-uri
-    , polysemy
-    , polysemy-plugin
     , servant
     , servant-auth
     , servant-auth-server
@@ -87,12 +85,11 @@ executable servant-photo-gallery-exe
       Paths_servant_photo_gallery
   hs-source-dirs:
       app
-  default-extensions: DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Cabal
     , base >=4.7 && <5
-    , polysemy-plugin
     , servant-photo-gallery
   default-language: Haskell2010
 
@@ -105,13 +102,11 @@ test-suite servant-photo-gallery-test
       Paths_servant_photo_gallery
   hs-source-dirs:
       test
-  default-extensions: DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
+  default-extensions: ConstraintKinds DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Cabal
     , base >=4.7 && <5
     , hedgehog
-    , network-uri
-    , polysemy-plugin
     , servant-photo-gallery
   default-language: Haskell2010

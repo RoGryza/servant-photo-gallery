@@ -1,67 +1,43 @@
 {-|
-Effects and handlers for file storage.
+DSL for file storage.
 -}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 module PG.Effects.FileStore
-  ( FileStore(..)
-  , fileURL
-  , fetchFile
-  , fileExists
-  , storeFile
-  , runFileStoreFS
-  , runFileStoreState
+  ( HasFileStore(..), MonadFileStore(..)
   )
 where
 
+import Control.Monad.Reader
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as BL
-import Data.HashMap.Lazy (HashMap)
-import qualified Data.HashMap.Lazy as HM
-import Data.Maybe
 import Network.URI
-import Polysemy
-import Polysemy.State
 import System.Directory
 import System.FilePath.Posix
 
--- |
--- = Effects
+class HasFileStore a where
+  getRootPath :: a -> FilePath
+  getBaseURL :: a -> URI
 
--- | Effect for persistent file storage
-data FileStore m a where
-  FileURL :: FilePath -> FileStore m URI
-  FileExists :: FilePath -> FileStore m Bool
-  FetchFile :: FilePath -> FileStore m ByteString
-  StoreFile :: ByteString -> FilePath -> FileStore m ()
+-- | Typeclass for persistent file storage
+class Monad m => MonadFileStore m where
+  -- | Returns the URL for a file. Doesn't check that the file is actually stored.
+  fileURL :: FilePath -> m URI
+  -- | Checks whether a file exists in the storage.
+  fileExists :: FilePath -> m Bool
+  -- | Get the contents from a file.
+  fetchFile :: FilePath -> m ByteString
+  -- | Store a file in a path.
+  storeFile :: ByteString -> FilePath -> m ()
 
-makeSem_ ''FileStore
-
--- | Returns the URL for a file. Doesn't check that the file is actually stored.
-fileURL :: Member FileStore r => FilePath -> Sem r URI
-
--- | Checks whether a file exists in the storage.
-fileExists :: Member FileStore r => FilePath -> Sem r Bool
-
--- | Get the contents from a file.
-fetchFile :: Member FileStore r => FilePath -> Sem r ByteString
-
--- | Store a file in a path.
-storeFile :: Member FileStore r => ByteString -> FilePath -> Sem r ()
-
--- |
--- = Interpreters
-
--- | Interpreter storing files on the local filesystem.
-runFileStoreFS
-  :: Member (Embed IO) r
-  => FilePath -- ^ Path to store files
-  -> URI -- ^ Base URL prepended to pathes for fileURL
-  -> Sem (FileStore ': r) a
-  -> Sem r a
-runFileStoreFS root baseURL = interpret $ \case
-  FileURL    name   -> embed $ return $ baseURL { uriPath = uriPath baseURL <> "/" <> name }
-  FileExists name   -> embed $ doesFileExist $ root </> name
-  FetchFile  name   -> embed $ BL.readFile $ root </> name
-  StoreFile bs name -> embed $ BL.writeFile (root </> name) bs
+instance (HasFileStore env, MonadIO m) => MonadFileStore (ReaderT env m) where
+  fileURL name = do
+    baseURL <- asks getBaseURL
+    return $ baseURL { uriPath = uriPath baseURL <> "/" <> name }
+  fileExists name = do
+    root <- asks getRootPath
+    liftIO $ doesFileExist $ root </> name
+  fetchFile name = do
+    root <- asks getRootPath
+    liftIO $ BL.readFile $ root </> name
+  storeFile bs name = do
+    root <- asks getRootPath
+    liftIO $ BL.writeFile (root </> name) bs

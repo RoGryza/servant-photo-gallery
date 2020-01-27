@@ -3,6 +3,7 @@ Server configuration data and related functions.
 -}
 module PG.Config
   ( Config(..)
+  , cfgAuth, cfgEnv
   , defaultConfig
   , cfgActualBaseUrl
   , cfgWarpSettings
@@ -11,21 +12,47 @@ module PG.Config
 where
 
 import Control.Monad.IO.Class
+import Control.Monad.Logger
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Maybe
 import Data.String
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Word
-import PG.Effects.Logging
 import Network.HTTP.Types
 import Network.URI
 import Network.Wai
 import Network.Wai.Handler.Warp
+import PG.Auth
+import PG.Env
+import PG.Effects.Auth
+import PG.Types
+import Servant.Auth.Server
+import System.IO
 import Text.Toml
+
+cfgAuth :: Config -> IO AuthConfig
+cfgAuth Config { cfgSessionDuration } = do
+  key    <- generateKey
+  return $ AuthConfig defaultCookieSettings (defaultJWTSettings key) cfgSessionDuration
+
+cfgEnv :: Config -> IO Env
+cfgEnv cfg@Config { cfgLogLevel, cfgDatabasePath, cfgMediaPath, cfgHtpasswd, cfgTitle, cfgDefaultPageSize, cfgMaxPageSize } = do
+  rawHtpasswd <- liftIO $ withFile cfgHtpasswd ReadMode T.hGetContents
+  return $ Env { envHtpasswd = parseHtpasswd rawHtpasswd
+               , envRootPath = cfgMediaPath
+               , envBaseURL = cfgActualBaseUrl cfg
+               , envDatabasePath = cfgDatabasePath
+               , envLogFilter = \_ l -> l >= cfgLogLevel
+               , envAppInfo = AppInfo cfgTitle
+               , envPagingCfg = PagingConfig { pagingCfgDefaultSize = cfgDefaultPageSize
+                                             , pagingCfgMaxSize = cfgMaxPageSize
+                                             }
+               }
 
 -- | Server configuration data. Usually read from "gallery.toml".
 data Config = Config
@@ -48,9 +75,13 @@ instance FromJSON Config where
     let baseUrl = case rawBaseUrl of
                      Just u -> Just <$> jsonUri u
                      Nothing -> return Nothing
+    rawLogLevel <- v .:? "log_level"
+    let logLevel = case rawLogLevel of
+                     Just u -> Just <$> jsonLogLevel u
+                     Nothing -> return Nothing
     Config
                          <$> v .:? "session_duration" .!= cfgSessionDuration defaultConfig
-                         <*> v .:? "log_level" .!= cfgLogLevel defaultConfig
+                         <*> logLevel .!= cfgLogLevel defaultConfig
                          <*> baseUrl
                          <*> v .:? "host" .!= cfgHost defaultConfig
                          <*> v .:? "port" .!= cfgPort defaultConfig
@@ -66,6 +97,14 @@ instance FromJSON Config where
               Just u -> return u
               Nothing -> fail $ "Invalid URI: " <> T.unpack s
           jsonUri u = typeMismatch "String" u
+
+          jsonLogLevel :: Value -> Parser LogLevel
+          jsonLogLevel (String "debug") = return LevelDebug
+          jsonLogLevel (String "info") = return LevelInfo
+          jsonLogLevel (String "warn") = return LevelWarn
+          jsonLogLevel (String "error") = return LevelError
+          jsonLogLevel (String s) = fail $ "Invalid log level " <> T.unpack s
+          jsonLogLevel x = typeMismatch "String" x
   parseJSON v = typeMismatch "Object" v
 
 -- | Returns the base url for a config or a default based on host and port

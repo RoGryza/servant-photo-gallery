@@ -1,21 +1,14 @@
 {-|
 Effects and handlers for the media metadata and posts database.
 -}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 module PG.Effects.PostDatabase
-  ( PostDatabase(..)
-  , fetchPosts
-  , insertPost
-  , insertMedia
-  , runPostDatabaseSqlite
+  ( HasConnection(..), MonadPostDatabase(..)
   )
 where
 
 import Control.Monad
+import Control.Monad.Reader
 import Database.SQLite.Simple hiding (withTransaction)
 import Database.SQLite.Simple.Internal
 import Data.Function
@@ -24,53 +17,32 @@ import Data.List
 import Data.Text (Text)
 import Data.Time.Clock
 import PG.Types
-import Polysemy
 
--- |
--- = Effects
+class HasConnection a where
+  acquire :: a -> IO Connection
 
--- | Effect for the media metadata and posts database
-data PostDatabase m a where
-  FetchPosts :: UTCTime -> Word -> PostDatabase m [PGPostF FilePath]
-  InsertPost :: UTCTime -> PostDatabase m PostID
-  InsertMedia :: PostID -> MediaF FilePath -> PostDatabase m ()
+-- | Typeclass for media metadata and posts database
+class Monad m => MonadPostDatabase m where
+  -- | Return the first posts created up to a timestamp, in descending time order.
+  fetchPosts
+    :: UTCTime -- ^ Timestamp limit
+    -> Word -- ^ Max amount of posts to fetch
+    -> m [PGPostF FilePath]
+  -- | Inserts a given post into the database, returning its ID.
+  insertPost
+    :: UTCTime -- ^ created at
+    -> m PostID
 
-makeSem_ ''PostDatabase
+  -- | Inserts media metadata for a post.
+  insertMedia
+    :: PostID -- ^ Post containing the media
+    -> MediaF FilePath -- ^ Media metadata
+    -> m ()
 
--- | Return the first posts created up to a timestamp, in descending time order.
-fetchPosts
-  :: Member PostDatabase r
-  => UTCTime -- ^ Timestamp limit
-  -> Word -- ^ Max amount of posts to fetch
-  -> Sem r [PGPostF FilePath]
-
--- | Inserts a given post into the database, returning its ID.
-insertPost
-  :: Member PostDatabase r
-  => UTCTime -- ^ created at
-  -> Sem r PostID
-
--- | Inserts media metadata for a post.
-insertMedia
-  :: Member PostDatabase r
-  => PostID -- ^ Post containing the media
-  -> MediaF FilePath -- ^ Media metadata
-  -> Sem r ()
-
--- |
--- = Interpreters
-
--- | Interprets the post database as an SQLite database. Database schema should match the latest
--- migration under `migrations`
-runPostDatabaseSqlite
-  :: Member (Embed IO) r
-  => IO Connection -- ^ Action to acquire a db connection
-  -> Sem (PostDatabase ': r) a
-  -> Sem r a
-runPostDatabaseSqlite acquire = interpret $ \case
-  FetchPosts upto limit -> do
-    conn       <- embed acquire
-    postParams <- embed $ queryWith
+instance (HasConnection env, MonadIO m) => MonadPostDatabase (ReaderT env m) where
+  fetchPosts upto limit = do
+    conn       <- asks acquire >>= liftIO
+    postParams <- liftIO $ queryWith
       rowParser
       conn
       "SELECT p.post_id, p.post_created_at, m.file_name, m.caption, m.width, m.height \
@@ -84,43 +56,45 @@ runPostDatabaseSqlite acquire = interpret $ \case
       let media = m <&> \(f, c, w, h) -> mkMedia c w h f
       return (i, d, media)
     return $ mkPost <$> groupBy ((==) `on` fst3) posts
-  InsertPost createdAt -> do
-    conn <- embed acquire
-    embed $ execute conn "INSERT INTO posts(post_created_at) VALUES (?)" (Only createdAt)
-    embed $ PostID . fromIntegral <$> lastInsertRowId conn
-  InsertMedia (PostID postId) MediaF { mediaSrc, mediaCaption, mediaWidth, mediaHeight } -> do
-    conn <- embed acquire
-    embed $ execute
+    where
+      rowParser :: RowParser (PostID, UTCTime, [(FilePath, Text, Word, Word)])
+      rowParser = do
+        postId      <- PostID <$> field
+        createdAt   <- field
+        fileName    <- field
+        mediaParams <- case fileName of
+          Just f -> do
+            mediaParams <- (f, , , ) <$> field <*> field <*> field
+            return [mediaParams]
+          Nothing -> return []
+        return (postId, createdAt, mediaParams)
+
+      mkPost xs@((postId, createdAt, _) : _) = PGPostF
+        { pgPostId        = postId
+        , pgPostCreatedAt = createdAt
+        , pgPostMedia     = mconcat . fmap third $ xs
+        }
+      mkPost _ = error "Invalid query result"
+
+      mkMedia c w h u = MediaF
+        { mediaCaption = c
+        , mediaType    = MediaTypeImage
+        , mediaSrc     = u
+        , mediaWidth   = w
+        , mediaHeight  = h
+        }
+      fst3 (x, _, _) = x
+      third (_, _, x) = x
+
+  insertPost createdAt = do
+    conn       <- asks acquire >>= liftIO
+    liftIO $ execute conn "INSERT INTO posts(post_created_at) VALUES (?)" (Only createdAt)
+    liftIO $ PostID . fromIntegral <$> lastInsertRowId conn
+
+  insertMedia (PostID postId) MediaF { mediaSrc, mediaCaption, mediaWidth, mediaHeight } = do
+    conn       <- asks acquire >>= liftIO
+    liftIO $ execute
       conn
       "INSERT INTO media(post_id, media_index, file_name, caption, width, height) \
       \ VALUES(?, 0, ?, ?, ?, ?)"
       (postId, mediaSrc, mediaCaption, mediaWidth, mediaHeight)
- where
-  rowParser :: RowParser (PostID, UTCTime, [(FilePath, Text, Word, Word)])
-  rowParser = do
-    postId      <- PostID <$> field
-    createdAt   <- field
-    fileName    <- field
-    mediaParams <- case fileName of
-      Just f -> do
-        mediaParams <- (f, , , ) <$> field <*> field <*> field
-        return [mediaParams]
-      Nothing -> return []
-    return (postId, createdAt, mediaParams)
-
-  mkPost xs@((postId, createdAt, _) : _) = PGPostF
-    { pgPostId        = postId
-    , pgPostCreatedAt = createdAt
-    , pgPostMedia     = mconcat . fmap third $ xs
-    }
-  mkPost _ = error "Invalid query result"
-
-  mkMedia c w h u = MediaF
-    { mediaCaption = c
-    , mediaType    = MediaTypeImage
-    , mediaSrc     = u
-    , mediaWidth   = w
-    , mediaHeight  = h
-    }
-  fst3 (x, _, _) = x
-  third (_, _, x) = x

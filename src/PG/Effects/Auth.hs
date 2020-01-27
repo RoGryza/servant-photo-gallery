@@ -1,23 +1,16 @@
 {-|
-Effects and handlers for authentication.
+DSL for authentication.
 -}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 module PG.Effects.Auth
-  ( Auth(..)
-  , checkPassword
-  , runAuthMem
-  , runAuthHtpasswd
-  , parseHtpasswd
-  , writeHtpasswd
-  , checkHtpasswd
+  ( HasUsers(..), MonadAuth(..)
+  , Htpasswd
+  , parseHtpasswd, writeHtpasswd
   )
 where
 
-import Polysemy
-import Crypto.KDF.BCrypt
+import Control.Monad.Reader
+import Crypto.KDF.BCrypt (bcrypt)
+import qualified Crypto.KDF.BCrypt as BCrypt
 import Data.ByteString (ByteString)
 import Data.List
 import Data.Text (Text)
@@ -25,52 +18,45 @@ import qualified Data.Text as Text
 import Data.Text.Encoding
 import PG.Types
 
--- |
--- = Effects
+-- | Typeclass for an user database
+class HasUsers a where
+  type PasswordHash a
 
--- | Effect for validating user authentication
-data Auth m a where
-  CheckPassword :: Text -> ByteString -> Auth m (Maybe User)
+  -- | Find the user instance and password hash for an username.
+  fetchUser :: a -> Text -> Maybe (User, PasswordHash a)
+  -- | Check that a password matches a given hash.
+  validatePassword :: a -> ByteString -> PasswordHash a -> Bool
 
-makeSem_ ''Auth
+-- | Typeclass for validating user authentication
+class Monad m => MonadAuth m where
+  -- | Returns @Nothing@ if the user doesn't exist or the password doesn't match and @Just user@
+  checkPassword :: Text -> ByteString -> m (Maybe User)
 
--- | Returns @Nothing@ if the user doesn't exist or the password doesn't match and @Just user@
--- otherwise.
-checkPassword
-  :: Member Auth r
-  => Text       -- ^ Username
-  -> ByteString -- ^ Password
-  -> Sem r (Maybe User)
+instance (HasUsers env, MonadIO m) => MonadAuth (ReaderT env m) where
+  checkPassword username password = do
+    maybeUser <- asks fetchUser <*> pure username
+    case maybeUser of
+      Just (u, hash) -> do
+        valid <- asks validatePassword <*> pure password <*> pure hash
+        if valid
+          then return $ Just u
+          else return Nothing
+      Nothing -> return Nothing
 
--- |
--- = Interpreters
+-- | Parsed htpasswd file
+newtype Htpasswd = Htpasswd [(User, ByteString)]
 
--- | Pure auth interpreter taking a function mapping usernames to (user, passwordHash) pairs and a
--- function for checking passwords
-runAuthMem
-  :: (Text -> Maybe (User, hash)) -> (ByteString -> hash -> Bool) -> Sem (Auth ': r) a -> Sem r a
-runAuthMem fetchUser validate = interpret $ \case
-  CheckPassword username password -> case fetchUser username of
-    Just (u, hash) | validate password hash -> return . Just $ u
-    _ -> return Nothing
+instance HasUsers Htpasswd where
+  type PasswordHash Htpasswd = ByteString
 
--- | Runs an auth effect by checking if users are present in the given (user, bcrypt password hash)
--- list.
---
--- parseHtpasswd can be used to get a user list from an htpasswd file.
-runAuthHtpasswd :: [(User, ByteString)] -> Sem (Auth ': r) a -> Sem r a
-runAuthHtpasswd users = runAuthMem findUser checkHtpasswd
-  where findUser name = find ((== name) . userName . fst) users
+  fetchUser (Htpasswd users) name = find ((== name) . userName . fst) users
+  validatePassword _ = BCrypt.validatePassword
 
--- |
--- = Other
-
--- | Parses the contents of an htpasswd file into a list of @(user, passwordHash)@ pairs. Only
--- accepts bcrypt hashed passwords.
+-- | Parses the contents of an htpasswd file. Only accepts bcrypt hashed passwords.
 --
 -- Doesn't do any validation.
-parseHtpasswd :: Text -> [(User, ByteString)]
-parseHtpasswd = fmap parseLine . zip (True : repeat False) . Text.lines
+parseHtpasswd :: Text -> Htpasswd
+parseHtpasswd = Htpasswd . fmap parseLine . zip (True : repeat False) . Text.lines
  where
   parseLine (isAdmin, ln) =
     let
@@ -90,12 +76,3 @@ writeHtpasswd mkSalt =
     writeUser (name , p) = do
       salt <- mkSalt
       return $ name <> ":" <> decodeUtf8 (bcrypt 10 salt p)
-
--- | Check a password against its bcrypt hash.
---
--- Returns @True@ if the hash is valid and matches the password.
-checkHtpasswd
-  :: ByteString -- ^ Password
-  -> ByteString -- ^ Hash
-  -> Bool
-checkHtpasswd = validatePassword

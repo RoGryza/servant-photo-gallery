@@ -1,43 +1,42 @@
+{-# LANGUAGE RankNTypes #-}
 {-|
 API-agnostic authentication server.
 -}
-{-# LANGUAGE TemplateHaskell #-}
 module PG.Auth
   ( AuthApi
+  , AuthConfig(..)
   , TokenRequest(..)
   , TokenResponse(..)
+  , hoistAuthServer
   , authServer
   )
 where
 
-import Control.Monad.IO.Class
+import Control.Monad.Except
+import Control.Monad.Reader
 import Data.Aeson
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
 import Data.Text.Encoding
 import Data.Time.Clock
-import PG.Effects
 import PG.Effects.Auth
-import PG.Orphans ()
+import PG.Effects.Clock
 import PG.Types
-import Polysemy
-import Polysemy.Error
-import Polysemy.Input
-import Polysemy.Reader
 import Servant
-import Servant.Auth.Server hiding (Auth)
-import qualified Servant.Auth.Server
+import Servant.Auth.Server
 import Web.FormUrlEncoded
 import qualified Data.ByteString.Lazy as BL
 
 -- |
 -- = API
 
+type AuthHandler env m = (MonadReader env m, HasClock env, MonadAuth m, MonadError ServerError m, MonadIO m)
+
 -- | Generic authentication API with a sub-api for authenticated users and another for admin users
 -- only.
 type AuthApi a b = "token" :> ReqBody '[FormUrlEncoded] TokenRequest :> Post '[JSON] TokenResponse
-               :<|> Servant.Auth.Server.Auth '[JWT] User :> a
-               :<|> Servant.Auth.Server.Auth '[JWT] Admin :> b
+               :<|> Auth '[JWT] User :> a
+               :<|> Auth '[JWT] Admin :> b
 
 data TokenRequest = TokenRequest { tokenRequestUsername :: !Text
                                  , tokenRequestPassword :: !Text
@@ -58,14 +57,34 @@ instance ToJSON TokenResponse where
 serializeJwt :: ByteString -> Text
 serializeJwt = decodeUtf8 . BL.toStrict
 
-authServer :: ( Members '[Input UTCTime, Auth, Reader Config, Error ServerError, Embed IO] r
-              , ThrowAll (ServerT a (Sem r))
-              , ThrowAll (ServerT b (Sem r))
+-- | Configuration for @authServer@
+data AuthConfig = AuthConfig
+                  { authCfgCookie :: !CookieSettings
+                  , authCfgJWT :: !JWTSettings
+                  , authCfgSessionDuration :: !NominalDiffTime
+                  }
+
+hoistAuthServer :: (HasServer a '[CookieSettings, JWTSettings])
+                => AuthConfig -> Proxy a
+                -> (forall x. m x -> Handler x)
+                -> (AuthConfig -> ServerT a m)
+                -> Application
+hoistAuthServer cfg@AuthConfig {authCfgCookie, authCfgJWT} api nt server =
+  let
+    ctxProxy = Proxy :: Proxy '[CookieSettings, JWTSettings]
+    ctx = authCfgCookie :. authCfgJWT :. EmptyContext
+  in serveWithContext api ctx
+     $ hoistServerWithContext api ctxProxy nt (server cfg)
+
+-- | Server implementation for @AuthApi@
+authServer :: ( AuthHandler env m
+              , ThrowAll (ServerT a m)
+              , ThrowAll (ServerT b m)
               )
-           => JWTSettings -> Proxy a -> Proxy b
-           -> ServerT a (Sem r) -> ServerT b (Sem r) -> ServerT (AuthApi a b) (Sem r)
-authServer jwtCfg _ _ a b =
-  postTokenHandler jwtCfg
+           => Proxy a -> Proxy b
+           -> ServerT a m -> ServerT b m -> AuthConfig -> ServerT (AuthApi a b) m
+authServer _ _ a b cfg =
+  postTokenHandler cfg
   :<|> requireAuth a
   :<|> requireAuth b
 
@@ -73,16 +92,14 @@ requireAuth :: ThrowAll b => b -> AuthResult a -> b
 requireAuth endpoint (Authenticated _) = endpoint
 requireAuth _          _                 = throwAll err401
 
-postTokenHandler :: Members '[Input UTCTime, Auth, Reader Config, Error ServerError, Embed IO] r
-                 => JWTSettings -> TokenRequest -> Sem r TokenResponse
-postTokenHandler jwtCfg (TokenRequest username password) = do
+postTokenHandler :: AuthHandler env m => AuthConfig -> TokenRequest -> m TokenResponse
+postTokenHandler AuthConfig {authCfgJWT, authCfgSessionDuration} (TokenRequest username password) = do
   maybeUser <- checkPassword username (encodeUtf8 password)
   user      <- case maybeUser of
     Just u  -> return u
-    Nothing -> throw err401
-  sessionDuration <- asks cfgSessionDuration
-  expire          <- addUTCTime sessionDuration <$> input
-  etoken          <- liftIO $ makeJWT user jwtCfg $ Just expire
+    Nothing -> throwError err401
+  expire          <- addUTCTime authCfgSessionDuration <$> utcCurrentTime
+  etoken          <- liftIO $ makeJWT user authCfgJWT $ Just expire
   case etoken of
-    Left  _ -> throw err500
+    Left  _ -> throwError err500
     Right v -> return $ TokenResponse v

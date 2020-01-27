@@ -18,9 +18,9 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - Cabal
-- polysemy-plugin
 
 default-extensions:
+  - ConstraintKinds
   - DataKinds
   - DeriveAnyClass
   - DeriveFoldable
@@ -61,9 +61,9 @@ library:
     - http-types
     - jose
     - lens
+    - monad-logger
     - mtl
     - network-uri
-    - polysemy
     - servant
     - servant-auth
     - servant-auth-server
@@ -83,7 +83,6 @@ library:
     - -Wincomplete-record-updates
     - -Wincomplete-uni-patterns
     - -Wredundant-constraints
-    - -fplugin=Polysemy.Plugin
 
 executables:
   servant-photo-gallery-exe:
