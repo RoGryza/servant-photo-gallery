@@ -2,7 +2,8 @@
 
 module Effects.Auth
   ( tests
-  ) where
+  )
+where
 
 import Hedgehog
 -- import qualified Hedgehog.Gen as Gen

@@ -2,7 +2,8 @@
 DSL for file storage.
 -}
 module PG.Effects.FileStore
-  ( HasFileStore(..), MonadFileStore(..)
+  ( HasFileStore(..)
+  , MonadFileStore(..)
   )
 where
 

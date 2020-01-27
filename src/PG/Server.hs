@@ -32,25 +32,25 @@ import PG.Types
 
 pgApp :: AuthConfig -> Env -> Application
 pgApp authCfg env =
-  let api      = Proxy :: Proxy PGApi
-  in hoistAuthServer authCfg api (runAppT env) pgApiServer
+  let api = Proxy :: Proxy PGApi in hoistAuthServer authCfg api (runAppT env) pgApiServer
 
 pgApiServer :: AuthConfig -> ServerT PGApi App
-pgApiServer = let
-    userApi = Proxy :: Proxy UserApi
+pgApiServer =
+  let
+    userApi  = Proxy :: Proxy UserApi
     adminApi = Proxy :: Proxy AdminApi
-  in
-    authServer userApi adminApi
-    (getAppInfoHandler :<|> getPostsHandler :<|> getMediaFile) (postUpload :<|> postPost)
+  in authServer
+    userApi
+    adminApi
+    (getAppInfoHandler :<|> getPostsHandler :<|> getMediaFile)
+    (postUpload :<|> postPost)
 
 getAppInfoHandler :: App AppInfo
 getAppInfoHandler = asks envAppInfo
 
 getPostsHandler :: Maybe UTCTime -> Maybe Word -> App [PGPost]
 getPostsHandler maybeUpto maybeLimit = do
-  upto <- case maybeUpto of
-    Nothing -> utcCurrentTime
-    Just d  -> return d
+  upto <- maybe utcCurrentTime return maybeUpto
   PagingConfig { pagingCfgDefaultSize, pagingCfgMaxSize } <- asks envPagingCfg
   let limit = min pagingCfgMaxSize $ fromMaybe pagingCfgDefaultSize maybeLimit
   posts <- fetchPosts upto limit
@@ -70,25 +70,24 @@ postUpload (UploadRequest payload) = do
   return $ UploadResponse filePath
 
 postPost :: PostRequest -> App PostResponse
-postPost PostRequest { postRequestPath, postRequestCaption, postRequestCreatedAt }
-  = do
-    exists <- fileExists postRequestPath
-    unless exists $ throwError err422
-    imgBytes        <- fetchFile postRequestPath
-    (width, height) <- case decodeJpeg . BS.concat . BL.toChunks $ imgBytes of
-      Right img -> return (dynamicMap imageWidth img, dynamicMap imageHeight img)
-      Left  e   -> do
-        logErrorN ("Failed to decode " <> T.pack postRequestPath <> ": " <> T.pack e)
-        throwError err500
-    createdAt <- maybe utcCurrentTime return postRequestCreatedAt
-    postId    <- insertPost createdAt
-    let
-      media = MediaF
-        { mediaSrc     = postRequestPath
-        , mediaCaption = postRequestCaption
-        , mediaType    = MediaTypeImage
-        , mediaWidth   = fromIntegral width
-        , mediaHeight  = fromIntegral height
-        }
-    insertMedia postId media
-    return $ PostResponse postId createdAt
+postPost PostRequest { postRequestPath, postRequestCaption, postRequestCreatedAt } = do
+  exists <- fileExists postRequestPath
+  unless exists $ throwError err422
+  imgBytes        <- fetchFile postRequestPath
+  (width, height) <- case decodeJpeg . BS.concat . BL.toChunks $ imgBytes of
+    Right img -> return (dynamicMap imageWidth img, dynamicMap imageHeight img)
+    Left  e   -> do
+      logErrorN ("Failed to decode " <> T.pack postRequestPath <> ": " <> T.pack e)
+      throwError err500
+  createdAt <- maybe utcCurrentTime return postRequestCreatedAt
+  postId    <- insertPost createdAt
+  let
+    media = MediaF
+      { mediaSrc     = postRequestPath
+      , mediaCaption = postRequestCaption
+      , mediaType    = MediaTypeImage
+      , mediaWidth   = fromIntegral width
+      , mediaHeight  = fromIntegral height
+      }
+  insertMedia postId media
+  return $ PostResponse postId createdAt

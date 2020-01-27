@@ -3,7 +3,8 @@ Effects and handlers for the media metadata and posts database.
 -}
 {-# LANGUAGE TupleSections #-}
 module PG.Effects.PostDatabase
-  ( HasConnection(..), MonadPostDatabase(..)
+  ( HasConnection(..)
+  , MonadPostDatabase(..)
   )
 where
 
@@ -56,43 +57,43 @@ instance (HasConnection env, MonadIO m) => MonadPostDatabase (ReaderT env m) whe
       let media = m <&> \(f, c, w, h) -> mkMedia c w h f
       return (i, d, media)
     return $ mkPost <$> groupBy ((==) `on` fst3) posts
-    where
-      rowParser :: RowParser (PostID, UTCTime, [(FilePath, Text, Word, Word)])
-      rowParser = do
-        postId      <- PostID <$> field
-        createdAt   <- field
-        fileName    <- field
-        mediaParams <- case fileName of
-          Just f -> do
-            mediaParams <- (f, , , ) <$> field <*> field <*> field
-            return [mediaParams]
-          Nothing -> return []
-        return (postId, createdAt, mediaParams)
+   where
+    rowParser :: RowParser (PostID, UTCTime, [(FilePath, Text, Word, Word)])
+    rowParser = do
+      postId      <- PostID <$> field
+      createdAt   <- field
+      fileName    <- field
+      mediaParams <- case fileName of
+        Just f -> do
+          mediaParams <- (f, , , ) <$> field <*> field <*> field
+          return [mediaParams]
+        Nothing -> return []
+      return (postId, createdAt, mediaParams)
 
-      mkPost xs@((postId, createdAt, _) : _) = PGPostF
-        { pgPostId        = postId
-        , pgPostCreatedAt = createdAt
-        , pgPostMedia     = mconcat . fmap third $ xs
-        }
-      mkPost _ = error "Invalid query result"
+    mkPost xs@((postId, createdAt, _) : _) = PGPostF
+      { pgPostId        = postId
+      , pgPostCreatedAt = createdAt
+      , pgPostMedia     = mconcat . fmap third $ xs
+      }
+    mkPost _ = error "Invalid query result"
 
-      mkMedia c w h u = MediaF
-        { mediaCaption = c
-        , mediaType    = MediaTypeImage
-        , mediaSrc     = u
-        , mediaWidth   = w
-        , mediaHeight  = h
-        }
-      fst3 (x, _, _) = x
-      third (_, _, x) = x
+    mkMedia c w h u = MediaF
+      { mediaCaption = c
+      , mediaType    = MediaTypeImage
+      , mediaSrc     = u
+      , mediaWidth   = w
+      , mediaHeight  = h
+      }
+    fst3 (x, _, _) = x
+    third (_, _, x) = x
 
   insertPost createdAt = do
-    conn       <- asks acquire >>= liftIO
+    conn <- asks acquire >>= liftIO
     liftIO $ execute conn "INSERT INTO posts(post_created_at) VALUES (?)" (Only createdAt)
     liftIO $ PostID . fromIntegral <$> lastInsertRowId conn
 
   insertMedia (PostID postId) MediaF { mediaSrc, mediaCaption, mediaWidth, mediaHeight } = do
-    conn       <- asks acquire >>= liftIO
+    conn <- asks acquire >>= liftIO
     liftIO $ execute
       conn
       "INSERT INTO media(post_id, media_index, file_name, caption, width, height) \

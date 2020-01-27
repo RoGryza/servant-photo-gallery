@@ -2,7 +2,8 @@
 module PG.Effects.Clock
   ( HasClock(..)
   , utcCurrentTime
-  ) where
+  )
+where
 
 import Control.Monad.Reader
 import Data.Time.Clock

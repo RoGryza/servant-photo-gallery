@@ -2,7 +2,8 @@
 
 module Effects.FileStore
   ( tests
-  ) where
+  )
+where
 
 -- import Control.Monad.IO.Class
 -- import Data.ByteString.Lazy (ByteString)

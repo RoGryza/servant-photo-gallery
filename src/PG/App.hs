@@ -33,7 +33,7 @@ pgMain = do
       Right c -> c
       Left  e -> error $ show e
   authCfg <- cfgAuth cfg
-  env <- cfgEnv cfg
+  env     <- cfgEnv cfg
   putStrLn $ "Starting gallery at " ++ show (cfgActualBaseUrl cfg)
   putStrLn $ "Showing media from " ++ cfgMediaPath cfg
   let app = pgApp authCfg env

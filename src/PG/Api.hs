@@ -39,10 +39,12 @@ instance MimeRender JPEG ByteString where
 -- | Gallery server API
 type PGApi = AuthApi UserApi AdminApi
 
+-- brittany-disable-next-binding
 type UserApi = "info" :> Get '[JSON] AppInfo
              :<|> "posts" :> QueryParam "upto" UTCTime :> QueryParam "limit" Word :> Get '[JSON] [PGPost]
              :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
 
+-- brittany-disable-next-binding
 type AdminApi = "upload" :> MultipartForm Mem UploadRequest :> Post '[JSON] UploadResponse
                 :<|> "posts" :> ReqBody '[JSON] PostRequest :> PostCreated '[JSON] PostResponse
 
@@ -50,7 +52,7 @@ data UploadRequest = UploadRequest { uploadRequestData :: !ByteString
                                    }
 
 instance FromMultipart Mem UploadRequest where
-  fromMultipart MultipartData { files = [ FileData { fdFileCType, fdPayload } ] }
+  fromMultipart MultipartData { files = [FileData { fdFileCType, fdPayload }] }
     | fdFileCType == "image/jpeg" = Just $ UploadRequest fdPayload
   fromMultipart _ = Nothing
 

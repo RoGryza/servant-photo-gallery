@@ -75,17 +75,13 @@ $(deriveJSON (jsonOpts "App" "appInfo") ''AppInfo)
 
 instance ToJWT User where
   encodeJWT User { userName, userIsAdmin } =
-    (claimSub ?~ review string userName) $
-    addClaim "admin" (Bool userIsAdmin)
-    emptyClaimsSet
+    (claimSub ?~ review string userName) $ addClaim "admin" (Bool userIsAdmin) emptyClaimsSet
 
 instance FromJWT User where
   decodeJWT claims = case claims ^. claimSub >>= preview string of
     Just sub -> case M.lookup "admin" (claims ^. unregisteredClaims) of
-      Just (Bool b) -> Right $ User { userName = sub
-                                    , userIsAdmin = b
-                                    }
-      _ -> Left "Invalid or missing admin"
+      Just (Bool b) -> Right $ User { userName = sub, userIsAdmin = b }
+      _             -> Left "Invalid or missing admin"
     _ -> Left "Invalid or missing sub"
 
 instance ToJWT Admin where
@@ -94,6 +90,4 @@ instance ToJWT Admin where
 instance FromJWT Admin where
   decodeJWT claims = do
     user <- decodeJWT claims
-    if userIsAdmin user
-      then Right Admin { adminName = userName user }
-      else Left "User is not admin"
+    if userIsAdmin user then Right Admin { adminName = userName user } else Left "User is not admin"

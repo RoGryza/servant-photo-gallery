@@ -2,9 +2,11 @@
 DSL for authentication.
 -}
 module PG.Effects.Auth
-  ( HasUsers(..), MonadAuth(..)
+  ( HasUsers(..)
+  , MonadAuth(..)
   , Htpasswd
-  , parseHtpasswd, writeHtpasswd
+  , parseHtpasswd
+  , writeHtpasswd
   )
 where
 
@@ -38,9 +40,7 @@ instance (HasUsers env, MonadIO m) => MonadAuth (ReaderT env m) where
     case maybeUser of
       Just (u, hash) -> do
         valid <- asks validatePassword <*> pure password <*> pure hash
-        if valid
-          then return $ Just u
-          else return Nothing
+        if valid then return $ Just u else return Nothing
       Nothing -> return Nothing
 
 -- | Parsed htpasswd file
@@ -61,18 +61,18 @@ parseHtpasswd = Htpasswd . fmap parseLine . zip (True : repeat False) . Text.lin
   parseLine (isAdmin, ln) =
     let
       (u, p) = Text.break (== ':') ln
-      user   = User {userName = u, userIsAdmin = isAdmin}
+      user   = User { userName = u, userIsAdmin = isAdmin }
     in (user, encodeUtf8 $ Text.drop 1 p)
 
 -- | Given a salt generator and a list of @(userName, password)@ pairs, return the equivalent htpasswd
 -- contents.
-writeHtpasswd :: Monad m
-              => m ByteString -- ^ Action to generate salt
-              -> [(Text, ByteString)]
-              -> m Text
-writeHtpasswd mkSalt =
-  fmap Text.unlines . mapM writeUser
-  where
-    writeUser (name , p) = do
-      salt <- mkSalt
-      return $ name <> ":" <> decodeUtf8 (bcrypt 10 salt p)
+writeHtpasswd
+  :: Monad m
+  => m ByteString -- ^ Action to generate salt
+  -> [(Text, ByteString)]
+  -> m Text
+writeHtpasswd mkSalt = fmap Text.unlines . mapM writeUser
+ where
+  writeUser (name, p) = do
+    salt <- mkSalt
+    return $ name <> ":" <> decodeUtf8 (bcrypt 10 salt p)

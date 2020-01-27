@@ -2,7 +2,8 @@
 Defines the monad stack used by the server.
 -}
 module PG.Env
-  ( Env(..), PagingConfig(..)
+  ( Env(..)
+  , PagingConfig(..)
   , App
   , AppT
   , runAppT
@@ -39,12 +40,12 @@ data PagingConfig = PagingConfig
 
 instance HasUsers Env where
   type PasswordHash Env = ByteString
-  fetchUser = fetchUser . envHtpasswd
+  fetchUser        = fetchUser . envHtpasswd
   validatePassword = validatePassword . envHtpasswd
 
 instance HasFileStore Env where
   getRootPath = envRootPath
-  getBaseURL = envBaseURL
+  getBaseURL  = envBaseURL
 
 instance HasConnection Env where
   acquire = open . envDatabasePath
@@ -59,4 +60,5 @@ type App = AppT Handler
 
 -- | Runs the server monad stack
 runAppT :: MonadIO m => Env -> AppT m a -> m a
-runAppT env@Env{envLogFilter} m = runStdoutLoggingT $ filterLogger envLogFilter $ flip runReaderT env $ m
+runAppT env@Env { envLogFilter } m =
+  runStdoutLoggingT $ filterLogger envLogFilter $ runReaderT m env
