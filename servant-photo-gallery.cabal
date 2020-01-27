@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b9e003c0f34994217e6104db10bba25d657e9801f934993be68e30cdae5577e5
+-- hash: 5e470753c283b10819f47cd4e74638debfc549bb41785e3677304f83933ad3f0
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -104,6 +104,14 @@ test-suite servant-photo-gallery-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
+    , containers
+    , directory
     , hedgehog
+    , hedgehog-corpus
+    , mmorph
+    , mtl
+    , network-uri
     , servant-photo-gallery
+    , unordered-containers
   default-language: Haskell2010

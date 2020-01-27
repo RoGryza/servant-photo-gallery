@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-|
 DSL for file storage.
 -}
@@ -29,7 +30,8 @@ class Monad m => MonadFileStore m where
   -- | Store a file in a path.
   storeFile :: ByteString -> FilePath -> m ()
 
-instance (HasFileStore env, MonadIO m) => MonadFileStore (ReaderT env m) where
+-- OK undecidable instance since MonadReader has a fundep
+instance (MonadReader env m, HasFileStore env, MonadIO m, Monad m) => MonadFileStore m where
   fileURL name = do
     baseURL <- asks getBaseURL
     return $ baseURL { uriPath = uriPath baseURL <> "/" <> name }

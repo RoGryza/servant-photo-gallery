@@ -103,5 +103,13 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - bytestring
+    - containers
+    - directory
     - hedgehog
+    - hedgehog-corpus
+    - mmorph
+    - mtl
+    - network-uri
     - servant-photo-gallery
+    - unordered-containers
