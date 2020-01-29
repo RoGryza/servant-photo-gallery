@@ -2,6 +2,7 @@
 Effects and handlers for the media metadata and posts database.
 -}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UndecidableInstances #-}
 module PG.Effects.PostDatabase
   ( HasConnection(..)
   , MonadPostDatabase(..)
@@ -11,6 +12,7 @@ where
 import Control.Monad
 import Control.Monad.Reader
 import Database.SQLite.Simple hiding (withTransaction)
+import Database.SQLite.Simple.Types
 import Database.SQLite.Simple.Internal
 import Data.Function
 import Data.Functor
@@ -21,6 +23,9 @@ import PG.Types
 
 class HasConnection a where
   acquire :: a -> IO Connection
+
+instance HasConnection Connection where
+  acquire = return
 
 -- | Typeclass for media metadata and posts database
 class Monad m => MonadPostDatabase m where
@@ -40,7 +45,8 @@ class Monad m => MonadPostDatabase m where
     -> MediaF FilePath -- ^ Media metadata
     -> m ()
 
-instance (HasConnection env, MonadIO m) => MonadPostDatabase (ReaderT env m) where
+-- OK undecidable instance since MonadReader has a fundep
+instance (MonadReader env m, HasConnection env, MonadIO m, Monad m) => MonadPostDatabase m where
   fetchPosts upto limit = do
     conn       <- asks acquire >>= liftIO
     postParams <- liftIO $ queryWith
@@ -67,7 +73,11 @@ instance (HasConnection env, MonadIO m) => MonadPostDatabase (ReaderT env m) whe
         Just f -> do
           mediaParams <- (f, , , ) <$> field <*> field <*> field
           return [mediaParams]
-        Nothing -> return []
+        Nothing -> do
+          void $ (field :: RowParser Null)
+          void $ (field :: RowParser Null)
+          void $ (field :: RowParser Null)
+          return []
       return (postId, createdAt, mediaParams)
 
     mkPost xs@((postId, createdAt, _) : _) = PGPostF

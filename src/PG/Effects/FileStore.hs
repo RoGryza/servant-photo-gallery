@@ -1,7 +1,7 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-|
 DSL for file storage.
 -}
+{-# LANGUAGE UndecidableInstances #-}
 module PG.Effects.FileStore
   ( HasFileStore(..)
   , MonadFileStore(..)

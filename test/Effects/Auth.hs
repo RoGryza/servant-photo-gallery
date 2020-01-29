@@ -1,10 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Effects.Auth
-  ( tests
+  ( runTests
   )
 where
 
+import Control.Monad (void)
 import Data.ByteString (ByteString)
 import qualified Data.Set as Set
 import Data.Text (Text)
@@ -38,3 +39,6 @@ prop_htpasswd_roundtrip = withTests 20 . property $ do
 
 tests :: Group
 tests = $$(discover)
+
+runTests :: IO ()
+runTests = void $ checkSequential tests

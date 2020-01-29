@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5e470753c283b10819f47cd4e74638debfc549bb41785e3677304f83933ad3f0
+-- hash: f304edc2ffb58f9ff6faaafae0b4bf6538329c3cd8f7ae33e53f1d1ac6128ba4
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -97,6 +97,7 @@ test-suite servant-photo-gallery-test
   other-modules:
       Effects.Auth
       Effects.FileStore
+      Effects.PostDatabase
       Paths_servant_photo_gallery
   hs-source-dirs:
       test
@@ -107,11 +108,15 @@ test-suite servant-photo-gallery-test
     , bytestring
     , containers
     , directory
+    , filepath
     , hedgehog
     , hedgehog-corpus
     , mmorph
     , mtl
     , network-uri
     , servant-photo-gallery
+    , sqlite-simple
+    , text
+    , time
     , unordered-containers
   default-language: Haskell2010

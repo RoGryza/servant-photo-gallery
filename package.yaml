@@ -106,10 +106,14 @@ tests:
     - bytestring
     - containers
     - directory
+    - filepath
     - hedgehog
     - hedgehog-corpus
     - mmorph
     - mtl
     - network-uri
     - servant-photo-gallery
+    - sqlite-simple
+    - text
+    - time
     - unordered-containers

@@ -28,7 +28,7 @@ import PG.Util
 
 -- | Unique ID for a post.
 newtype PostID = PostID Int
-               deriving (Show, Read, Eq)
+               deriving (Ord, Show, Read, Eq)
                deriving newtype (ToJSON, FromJSON)
 
 -- | General application instance-specific information.
@@ -41,7 +41,7 @@ data PGPostF u = PGPostF
                { pgPostId :: !PostID
                , pgPostCreatedAt :: !UTCTime
                , pgPostMedia :: ![MediaF u]
-               } deriving (Show, Functor, Foldable, Traversable)
+               } deriving (Eq, Show, Functor, Foldable, Traversable)
 
 type PGPost = PGPostF URI
 
@@ -52,12 +52,12 @@ data MediaF u = MediaF
              , mediaSrc :: !u
              , mediaWidth :: !Word
              , mediaHeight :: !Word
-             } deriving (Show, Functor, Foldable, Traversable)
+             } deriving (Eq, Show, Functor, Foldable, Traversable)
 
 type Media = MediaF URI
 
 data MediaType = MediaTypeImage
-  deriving (Show)
+  deriving (Eq, Show, Enum, Bounded)
 
 -- | Data for an user session.
 data User = User { userName :: !Text

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Effects.FileStore
-  ( tests
+  ( runTests
   )
 where
 
@@ -17,6 +17,7 @@ import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Network.URI
 import PG.Effects.FileStore
+import System.FilePath
 import System.Directory
 
 data TestStore = TestStore
@@ -30,14 +31,14 @@ instance HasFileStore TestStore where
 
 type TestMonadStore = PropertyT (ReaderT TestStore IO)
 
-testStore :: TestStore
-testStore = TestStore ".test/filestore" $ fromJust (parseURI "http://localhost")
+testStore :: FilePath -> TestStore
+testStore = flip TestStore $ fromJust (parseURI "http://localhost")
 
-hoistTest :: TestMonadStore a -> PropertyT IO a
-hoistTest = hoist $ flip runReaderT testStore
+hoistTest :: FilePath -> TestMonadStore a -> PropertyT IO a
+hoistTest p = hoist $ flip runReaderT (testStore p)
 
-resetTest :: IO ()
-resetTest = let p = getRootPath testStore in removePathForcibly p >> createDirectoryIfMissing True p 
+resetTest :: FilePath -> IO ()
+resetTest p = removePathForcibly p >> createDirectoryIfMissing True p 
 
 genName :: MonadGen m => m FilePath
 genName = Gen.element Corpus.simpsons
@@ -101,16 +102,21 @@ cStoreFile = let
         State $ HM.insert p bs s
     ]
 
-prop_fs_state_equivalent :: Property
-prop_fs_state_equivalent = property . hoistTest $ do
+prop_fs_state_equivalent :: FilePath -> Property
+prop_fs_state_equivalent p = property . hoistTest p $ do
   actions <- forAll $
     Gen.sequential
     (Range.linear 1 100)
     initialState
     [cFileExists, cStoreFile, cFetchFile]
 
-  evalIO resetTest
+  evalIO $ resetTest p
   executeSequential initialState actions
 
-tests :: Group
-tests = $$(discover)
+runTests :: IO ()
+runTests = do
+  tmp <- getTemporaryDirectory
+  let root = tmp </> "filestore"
+  void $ checkSequential $ Group "Effects.FileStore"
+    [ ("prop_fs_state_equivalent", prop_fs_state_equivalent root)
+    ]
