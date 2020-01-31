@@ -74,9 +74,9 @@ instance (MonadReader env m, HasConnection env, MonadIO m, Monad m) => MonadPost
           mediaParams <- (f, , , ) <$> field <*> field <*> field
           return [mediaParams]
         Nothing -> do
-          void $ (field :: RowParser Null)
-          void $ (field :: RowParser Null)
-          void $ (field :: RowParser Null)
+          void (field :: RowParser Null)
+          void (field :: RowParser Null)
+          void (field :: RowParser Null)
           return []
       return (postId, createdAt, mediaParams)
 

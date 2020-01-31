@@ -6,6 +6,7 @@ module Types
 import Control.Monad
 import Servant.Auth.Server
 import Data.Text (Text)
+import Language.Haskell.TH
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Corpus as Corpus
@@ -25,7 +26,7 @@ prop_tripping_admin_jwt = property $ do
   tripping user encodeJWT decodeJWT
 
 tests :: Group
-tests = $$(discover)
+tests = $(unType <$> discover) -- unType instead of $$ so that hlint doesn't complain
 
 runTests :: IO ()
 runTests = void $ checkParallel tests

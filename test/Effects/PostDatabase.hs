@@ -70,7 +70,7 @@ initialState :: State v
 initialState = State []
 
 stInsertEmpty :: Eq1 v => Var PostID v -> UTCTime -> State v -> State v
-stInsertEmpty i t (State xs) = State $ (TestPost i t Nothing):(filter diffKey xs)
+stInsertEmpty i t (State xs) = State $ TestPost i t Nothing:filter diffKey xs
   where diffKey = (/= i) . tpID
 
 stInsertMedia :: Eq1 v => Var PostID v -> MediaF FilePath -> State v -> State v
@@ -163,7 +163,7 @@ prop_db_state_equivalent conn = withTests 100 . property . hoistTest conn $ do
 
 runTests :: IO ()
 runTests = do
-  migrations <- filter ((/=) "\n") . fmap T.unpack . T.splitOn ";" <$> withFile "migrations/01_initial.sql" ReadMode T.hGetContents
+  migrations <- filter ("\n" /=) . fmap T.unpack . T.splitOn ";" <$> withFile "migrations/01_initial.sql" ReadMode T.hGetContents
   withConnection ":memory:" $ \conn -> do
     mapM_ (execute_ conn . fromString) migrations
     void $ checkSequential $ Group "Effects.PostDatabase"

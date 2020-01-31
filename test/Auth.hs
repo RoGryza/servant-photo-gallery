@@ -51,7 +51,7 @@ invalidToken = tokenFromSettings (BS.replicate 256 1)
 
 tokenFromSettings :: (MonadIO m, MonadTest m) => ByteString -> User -> m Token
 tokenFromSettings key u = do
-  raw <- liftIO $ makeJWT u (defaultJWTSettings $ fromSecret key) $ Nothing
+  raw <- liftIO $ makeJWT u (defaultJWTSettings $ fromSecret key) Nothing
   Token . LBS.toStrict <$> evalEither raw
 
 type TestApi = AuthApi PublicApi AdminApi
@@ -67,7 +67,7 @@ instance HasClock Env where
 instance HasUsers Env where
   type PasswordHash Env = Text
   fetchUser _ name = (,T.reverse name) <$> find ((== name) . userName) validUsers
-  validatePassword _ = ((==) . decodeUtf8)
+  validatePassword _ = (==) . decodeUtf8
 
 type TestHandler = ReaderT Env Handler
 
@@ -75,7 +75,7 @@ runTestHandler :: Env -> TestHandler a -> Handler a
 runTestHandler = flip runReaderT
 
 testServer :: AuthConfig -> ServerT TestApi TestHandler
-testServer = authServer (Proxy @PublicApi) (Proxy @AdminApi) (Tagged $ dummyApp "public") (Tagged $ dummyApp "admin")
+testServer = authServer (Proxy :: Proxy PublicApi) (Proxy :: Proxy AdminApi) (Tagged $ dummyApp "public") (Tagged $ dummyApp "admin")
 
 dummyApp :: LBS.ByteString -> Application
 dummyApp name _ respond = respond $ responseLBS status200 [] name
@@ -86,16 +86,12 @@ authCfg =
   in  AuthConfig defaultCookieSettings (defaultJWTSettings key) (60 * 30)
 
 testApp :: Env -> Application
-testApp env =
-  let
-      api = Proxy @TestApi
-  in
-    hoistAuthServer authCfg api (runTestHandler env) testServer
+testApp env = hoistAuthServer authCfg (Proxy :: Proxy TestApi) (runTestHandler env) testServer
 
 postToken :: TokenRequest -> ClientM TokenResponse
 getPublic :: Token -> Method -> ClientM (ResponseF LBS.ByteString)
 getAdmin :: Token -> Method -> ClientM (ResponseF LBS.ByteString)
-postToken :<|> getPublic :<|> getAdmin = client (Proxy @TestApi)
+postToken :<|> getPublic :<|> getAdmin = client (Proxy :: Proxy TestApi)
 
 prop_tripping_token_request_form :: Property
 prop_tripping_token_request_form = property $ do

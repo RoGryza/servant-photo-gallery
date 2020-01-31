@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Effects.FileStore
   ( runTests
   )
@@ -64,8 +62,7 @@ cFileExists = let
   execute (FileExists p) = fileExists p
   in
     Command gen execute
-    [ Ensure $ \_ (State s) (FileExists p) o -> do
-        o === HM.member p s
+    [ Ensure $ \_ (State s) (FileExists p) o -> o === HM.member p s
     ]
 
 data FetchFile (v :: * -> *) = FetchFile FilePath
@@ -82,8 +79,7 @@ cFetchFile = let
   execute (FetchFile p) = fetchFile p
   in
     Command gen execute
-    [ Ensure $ \_ (State s) (FetchFile p) o -> do
-        Just o === HM.lookup p s
+    [ Ensure $ \_ (State s) (FetchFile p) o -> Just o === HM.lookup p s
     ]
 
 data StoreFile (v :: * -> *) = StoreFile ByteString FilePath

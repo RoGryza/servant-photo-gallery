@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 54d9c7a3e849c47355a6a553bccef13597276b8cd85a5f05e451e6c6fb638ee9
+-- hash: 9c62a818a0cea7d881c7ca4c5b6172e1e3d85c4329697015992b3231527ae6c5
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -85,10 +85,38 @@ executable servant-photo-gallery-exe
   hs-source-dirs:
       app
   default-extensions: ConstraintKinds DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      JuicyPixels
+    , aeson
+    , base >=4.7 && <5
+    , bytestring
+    , cryptonite
+    , directory
+    , filepath
+    , htoml
+    , http-api-data
+    , http-media
+    , http-types
+    , jose
+    , lens
+    , monad-logger
+    , mtl
+    , network-uri
+    , servant
+    , servant-auth
+    , servant-auth-server
+    , servant-multipart
     , servant-photo-gallery
+    , servant-server
+    , sqlite-simple
+    , text
+    , time
+    , unordered-containers
+    , uuid
+    , wai
+    , wai-cors
+    , warp
   default-language: Haskell2010
 
 test-suite servant-photo-gallery-test
@@ -104,27 +132,44 @@ test-suite servant-photo-gallery-test
   hs-source-dirs:
       test
   default-extensions: ConstraintKinds DataKinds DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies EmptyCase FlexibleContexts FlexibleInstances FunctionalDependencies LambdaCase GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns OverloadedStrings StandaloneDeriving TypeApplications TypeFamilies TypeOperators
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      JuicyPixels
+    , aeson
+    , base >=4.7 && <5
     , bytestring
     , containers
+    , cryptonite
     , directory
     , filepath
     , hedgehog
     , hedgehog-corpus
+    , htoml
+    , http-api-data
     , http-client
+    , http-media
+    , http-types
+    , jose
+    , lens
     , mmorph
+    , monad-logger
     , mtl
-    , network
     , network-uri
+    , servant
+    , servant-auth
     , servant-auth-client
+    , servant-auth-server
     , servant-client
+    , servant-multipart
     , servant-photo-gallery
+    , servant-server
     , sqlite-simple
+    , template-haskell
     , text
     , time
     , unordered-containers
-    , wai-extra
+    , uuid
+    , wai
+    , wai-cors
     , warp
   default-language: Haskell2010

@@ -9,6 +9,7 @@ import Control.Monad (void)
 import Data.ByteString (ByteString)
 import qualified Data.Set as Set
 import Data.Text (Text)
+import Language.Haskell.TH
 import Hedgehog
 import qualified Hedgehog.Corpus as Corpus
 import qualified Hedgehog.Gen as Gen
@@ -31,14 +32,12 @@ prop_htpasswd_roundtrip = withTests 20 . property $ do
   mapM_ (validatePassword' $ parseHtpasswd serialized) namesAndPasswords
   where
     validatePassword' htpasswd (name, p) = do
-      (User {userName}, hash) <- case fetchUser htpasswd name of
-        Just x -> return x 
-        Nothing -> failure
+      (User {userName}, hash) <- maybe failure return $ fetchUser htpasswd name
       name === userName
       assert $ validatePassword htpasswd p hash
 
 tests :: Group
-tests = $$(discover)
+tests = $(unType <$> discover) -- unType instead of $$ so that hlint doesn't complain
 
 runTests :: IO ()
 runTests = void $ checkSequential tests
