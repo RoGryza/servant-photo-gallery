@@ -1,11 +1,2 @@
-{ pkgs ? import <nixpkgs> {} }:
-with pkgs;
-mkShell {
-  buildInputs = with haskellPackages; [
-    python3
-    brittany
-    hlint
-    stack
-    weeder
-  ];
-}
+{ nixpkgs ? import <nixpkgs> { }, compiler ? "ghc865" }:
+(import ./default.nix { inherit nixpkgs compiler; }).env

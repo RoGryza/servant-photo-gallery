@@ -1,14 +1,15 @@
-name: Run checks
+name: Haskell CI
 on: [push]
+
 jobs:
   build:
-    name: Greeting
+
     runs-on: ubuntu-latest
+
     steps:
-      - name: Hello world
-        uses: actions/hello-world-javascript-action@v1
-        with:
-          who-to-greet: 'Mona the Octocat'
-        id: hello
-      - name: Echo the greeting's time
-        run: echo 'The time was ${{ steps.hello.outputs.time }}.'
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v6
+    - name: Lint
+      run: nix-shell --packages python3 --run 'scripts/lint.py'
+    - name: Test
+      run: nix-shell -- run 'stack test --fast'

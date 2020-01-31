@@ -8,3 +8,6 @@ packages:
 ghc-options:
   # Used by weeder
   "$locals": -ddump-to-file -ddump-hi
+
+nix:
+  enable: true
