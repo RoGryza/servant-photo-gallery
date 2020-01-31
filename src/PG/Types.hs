@@ -62,11 +62,11 @@ data MediaType = MediaTypeImage
 -- | Data for an user session.
 data User = User { userName :: !Text
                  , userIsAdmin :: !Bool
-                 } deriving (Show)
+                 } deriving (Eq, Show)
 
 -- | Admin-only user session.
 data Admin = Admin { adminName :: !Text
-                   }
+                   } deriving (Eq, Show)
 
 $(deriveJSON (jsonOpts "PG" "pgPost") ''PGPostF)
 $(deriveJSON (jsonOpts "" "media") ''MediaF)

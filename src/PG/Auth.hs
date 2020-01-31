@@ -19,6 +19,7 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
 import Data.Text.Encoding
 import Data.Time.Clock
+import GHC.Exts (fromList)
 import PG.Effects.Auth
 import PG.Effects.Clock
 import PG.Types
@@ -44,18 +45,29 @@ type AuthApi a b = "token" :> ReqBody '[FormUrlEncoded] TokenRequest :> Post '[J
 data TokenRequest = TokenRequest { tokenRequestUsername :: !Text
                                  , tokenRequestPassword :: !Text
                                  }
+  deriving (Eq, Show)
+
+instance ToForm TokenRequest where
+  toForm r = fromList [ ("username", toQueryParam $ tokenRequestUsername r)
+                      , ("password", toQueryParam $ tokenRequestPassword r)
+                      ]
 
 instance FromForm TokenRequest where
   fromForm f = TokenRequest <$> parseUnique "username" f <*> parseUnique "password" f
 
 data TokenResponse = TokenResponse { tokenResponseAccessToken :: !ByteString
                                    }
+  deriving (Eq, Show)
 
 instance ToJSON TokenResponse where
   toJSON TokenResponse { tokenResponseAccessToken } =
     object ["access_token" .= (String . serializeJwt $ tokenResponseAccessToken)]
   toEncoding TokenResponse { tokenResponseAccessToken } =
     pairs ("access_token" .= (String . serializeJwt $ tokenResponseAccessToken))
+
+instance FromJSON TokenResponse where
+  parseJSON = withObject "TokenRespons" $ \v ->
+    TokenResponse <$> (BL.fromStrict . encodeUtf8 <$> v .: "access_token")
 
 serializeJwt :: ByteString -> Text
 serializeJwt = decodeUtf8 . BL.toStrict

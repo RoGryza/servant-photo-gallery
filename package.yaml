@@ -109,11 +109,17 @@ tests:
     - filepath
     - hedgehog
     - hedgehog-corpus
+    - http-client
     - mmorph
     - mtl
+    - network
     - network-uri
+    - servant-auth-client
+    - servant-client
     - servant-photo-gallery
     - sqlite-simple
     - text
     - time
     - unordered-containers
+    - wai-extra
+    - warp
