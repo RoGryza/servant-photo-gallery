@@ -28,7 +28,6 @@ to `gallery.toml`. For a list of available settings check <src/PG/Config.hs>.
 
 ## Roadmap to v1.0
 
-- Unit tests
 - Allow passing configuration parameters through environment variables and the CLI.
 - OpenAPI specs
 - Remaining CRUD operations (delete and update posts)
