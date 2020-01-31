@@ -1,7 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Types
   ( runTests
-  ) where
+  )
+where
 
 import Control.Monad
 import Servant.Auth.Server

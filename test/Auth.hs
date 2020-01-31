@@ -1,7 +1,8 @@
 {-# LANGUAGE TupleSections #-}
 module Auth
   ( runTests
-  ) where
+  )
+where
 
 import Control.Monad.Reader
 import Data.Aeson
@@ -66,7 +67,7 @@ instance HasClock Env where
 
 instance HasUsers Env where
   type PasswordHash Env = Text
-  fetchUser _ name = (,T.reverse name) <$> find ((== name) . userName) validUsers
+  fetchUser _ name = (, T.reverse name) <$> find ((== name) . userName) validUsers
   validatePassword _ = (==) . decodeUtf8
 
 type TestHandler = ReaderT Env Handler
@@ -75,15 +76,19 @@ runTestHandler :: Env -> TestHandler a -> Handler a
 runTestHandler = flip runReaderT
 
 testServer :: AuthConfig -> ServerT TestApi TestHandler
-testServer = authServer (Proxy :: Proxy PublicApi) (Proxy :: Proxy AdminApi) (Tagged $ dummyApp "public") (Tagged $ dummyApp "admin")
+testServer = authServer
+  (Proxy :: Proxy PublicApi)
+  (Proxy :: Proxy AdminApi)
+  (Tagged $ dummyApp "public")
+  (Tagged $ dummyApp "admin")
 
 dummyApp :: LBS.ByteString -> Application
 dummyApp name _ respond = respond $ responseLBS status200 [] name
 
 authCfg :: AuthConfig
-authCfg = 
+authCfg =
   let key = fromSecret $ BS.replicate 256 0
-  in  AuthConfig defaultCookieSettings (defaultJWTSettings key) (60 * 30)
+  in AuthConfig defaultCookieSettings (defaultJWTSettings key) (60 * 30)
 
 testApp :: Env -> Application
 testApp env = hoistAuthServer authCfg (Proxy :: Proxy TestApi) (runTestHandler env) testServer
@@ -105,12 +110,10 @@ prop_tripping_token_response_json = property $ do
 
 prop_unauth_returns_401 :: ClientEnv -> Property
 prop_unauth_returns_401 env = property $ do
-  (users, getPassword) <- forAllWith (show . fst) $ Gen.element
-    [ (validUsers, userName)
-    , (invalidUsers, userPassword)
-    ]
+  (users, getPassword) <- forAllWith (show . fst)
+    $ Gen.element [(validUsers, userName), (invalidUsers, userPassword)]
   user <- forAll $ Gen.element users
-  tok <- invalidToken user
+  tok  <- invalidToken user
   let req = TokenRequest (userName user) (getPassword user)
   assertError env 401 $ postToken req
   assertError env 401 $ getPublic tok "GET"
@@ -119,39 +122,40 @@ prop_unauth_returns_401 env = property $ do
 prop_auth_allows_access :: ClientEnv -> Property
 prop_auth_allows_access env = property $ do
   user <- forAll $ Gen.element validUsers
-  tok <- authUser user
+  tok  <- authUser user
   void . evalClientM env $ getPublic tok "GET"
   if userIsAdmin user
     then void . evalClientM env $ getAdmin tok "GET"
     else assertError env 401 $ getAdmin tok "GET"
-  where
-    authUser u@User {userName} = do
-      let req = TokenRequest userName (userPassword u)
-      TokenResponse t <- evalClientM env $ postToken req
-      return . Token $ LBS.toStrict t
+ where
+  authUser u@User { userName } = do
+    let req = TokenRequest userName (userPassword u)
+    TokenResponse t <- evalClientM env $ postToken req
+    return . Token $ LBS.toStrict t
 
 assertError :: Show a => ClientEnv -> Int -> ClientM a -> PropertyT IO ()
 assertError env status a = do
-    res <- evalIO $ runClientM a env
-    annotateShow res
-    case res of
-      Right _ -> failure
-      Left (FailureResponse _ r) -> statusCode (responseStatusCode r) === status
-      Left _ -> failure
+  res <- evalIO $ runClientM a env
+  annotateShow res
+  case res of
+    Right _                     -> failure
+    Left  (FailureResponse _ r) -> statusCode (responseStatusCode r) === status
+    Left  _                     -> failure
 
 evalClientM :: ClientEnv -> ClientM a -> PropertyT IO a
 evalClientM env a = evalEither =<< evalIO (runClientM a env)
 
 tests :: ClientEnv -> Group
-tests env = Group "Auth" [ ("prop_tripping_token_request_form", prop_tripping_token_request_form)
-                         , ("prop_tripping_token_response_json", prop_tripping_token_response_json)
-                         , ("prop_unauth_returns_401", prop_unauth_returns_401 env)
-                         , ("prop_auth_allows_access", prop_auth_allows_access env)
-                         ]
+tests env = Group
+  "Auth"
+  [ ("prop_tripping_token_request_form" , prop_tripping_token_request_form)
+  , ("prop_tripping_token_response_json", prop_tripping_token_response_json)
+  , ("prop_unauth_returns_401"          , prop_unauth_returns_401 env)
+  , ("prop_auth_allows_access"          , prop_auth_allows_access env)
+  ]
 
 runTests :: IO ()
-runTests =
-  testWithApplication (return $ testApp Env) $ \port -> do
-    let url = BaseUrl Http "localhost" port ""
-    manager <- liftIO $ newManager defaultManagerSettings
-    void $ checkParallel $ tests $ mkClientEnv manager url
+runTests = testWithApplication (return $ testApp Env) $ \port -> do
+  let url = BaseUrl Http "localhost" port ""
+  manager <- liftIO $ newManager defaultManagerSettings
+  void $ checkParallel $ tests $ mkClientEnv manager url
