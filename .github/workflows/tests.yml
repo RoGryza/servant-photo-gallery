@@ -8,8 +8,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v6
-    - name: Lint
-      run: nix-shell --packages python3 --run 'scripts/lint.py'
-    - name: Test
-      run: nix-shell -- run 'stack test --fast'
+    - name: cache stack-work
+      uses: actions/cache@v1
+      env:
+        cache-name: cache-stack-work
+      with:
+        path: .stack-work
+        key: build-${{ env.cache-stack-work }}-${{ hashFiles('stack.yaml.lock') }}
+        restore-keys: |
+          build-${{ env.cache-stack-work }}
+          build-
+    - name: Stack setup
+      run: stack setup
+    - name: Build dependencies
+      run: stack build --dependencies-only --fast
+    - name: Build project
+      run: stack build --fast
+    - name: Run linters
+      run: scripts/lint.py
+    - name: Run tests
+      run: stack test --fast
