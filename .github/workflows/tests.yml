@@ -24,7 +24,7 @@ jobs:
         restore-keys: |
           build-cache-stack-work
     - name: cache CI tools
-      users: actions/cache@v1
+      uses: actions/cache@v1
       with:
         path: .local-bin
         key: build-cache-local-bin
