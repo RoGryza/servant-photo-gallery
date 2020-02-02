@@ -23,17 +23,22 @@ jobs:
         key: build-cache-stack-work-${{ hashFiles('stack.yaml.lock') }}
         restore-keys: |
           build-cache-stack-work
+    - name: cache CI tools
+      users: actions/cache@v1
+      with:
+        path: .local-bin
+        key: build-cache-local-bin
     - name: Stack setup
       run: stack setup
     - name: Intsall CI tools
-      run: stack install brittany hlint weeder
+      run: stack --local-bin-path=.local-bin install brittany hlint weeder
     - name: Build dependencies
       run: stack build --dependencies-only --fast
     - name: Build project
       run: stack build --fast
     - name: Run linters
       env:
-        PATH: $PATH:$(stack path --local-bin)
+        PATH: {{ env.PATH }}:.local-bin
       run: scripts/lint.py
     - name: Run tests
       run: stack test --fast
