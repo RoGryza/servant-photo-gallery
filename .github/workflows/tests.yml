@@ -30,18 +30,14 @@ jobs:
         key: build-cache-local-bin
     - name: Stack setup
       run: stack setup
-    - name: Intsall CI tools
+    - name: Install CI tools
       run: stack --local-bin-path=.local-bin install brittany hlint weeder
     - name: Build dependencies
       run: stack build --dependencies-only --fast
     - name: Build project
       run: stack build --fast
-    - name: Y U NO WORK
-      run: ls -A
-    - name: Test stuff
-      run: .local-bin/weeder --version
+    - name: Run tests
+      run: stack test --fast
     - name: Run linters
       # run: scripts/lint.py
       run: .local-bin/weeder . && .local-bin/hlint . && .local-bin/brittany --check-mode **/*.hs
-    - name: Run tests
-      run: stack test --fast
