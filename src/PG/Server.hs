@@ -12,15 +12,14 @@ import Codec.Picture.Types
 import Control.Monad
 import Control.Monad.Logger
 import Control.Monad.Reader
+import Crypto.Hash
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy as LBS
 import Data.List
 import Data.Maybe
 import Data.Time.Clock
 import qualified Data.Text as T
-import qualified Data.UUID as UUID
-import qualified Data.UUID.V4 as UUID4
 import Servant
 import PG.Api
 import PG.Auth
@@ -39,11 +38,14 @@ pgApiServer =
   let
     userApi  = Proxy :: Proxy UserApi
     adminApi = Proxy :: Proxy AdminApi
-  in authServer
-    userApi
-    adminApi
-    (getAppInfoHandler :<|> getPostsHandler :<|> getMediaFile)
-    (postUpload :<|> postPost)
+  in \cfg ->
+    authServer
+        userApi
+        adminApi
+        (getAppInfoHandler :<|> getPostsHandler)
+        (postUpload :<|> postPost)
+        cfg
+      :<|> getMediaFile
 
 getAppInfoHandler :: App AppInfo
 getAppInfoHandler = asks envAppInfo
@@ -64,9 +66,11 @@ getMediaFile xs = do
 
 postUpload :: UploadRequest -> App UploadResponse
 postUpload (UploadRequest payload) = do
-  reqId <- liftIO UUID4.nextRandom
-  let filePath = UUID.toString reqId <> ".jpeg"
-  storeFile payload filePath
+  let
+    fileHash = hash (LBS.toStrict payload) :: Digest SHA3_512
+    filePath = show fileHash <> ".jpeg"
+  exists <- fileExists filePath
+  unless exists $ storeFile payload filePath
   return $ UploadResponse filePath
 
 postPost :: PostRequest -> App PostResponse
@@ -74,7 +78,7 @@ postPost PostRequest { postRequestPath, postRequestCaption, postRequestCreatedAt
   exists <- fileExists postRequestPath
   unless exists $ throwError err422
   imgBytes        <- fetchFile postRequestPath
-  (width, height) <- case decodeJpeg . BS.concat . BL.toChunks $ imgBytes of
+  (width, height) <- case decodeJpeg . BS.concat . LBS.toChunks $ imgBytes of
     Right img -> return (dynamicMap imageWidth img, dynamicMap imageHeight img)
     Left  e   -> do
       logErrorN ("Failed to decode " <> T.pack postRequestPath <> ": " <> T.pack e)

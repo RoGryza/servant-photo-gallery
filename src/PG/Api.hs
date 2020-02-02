@@ -38,11 +38,11 @@ instance MimeRender JPEG ByteString where
 
 -- | Gallery server API
 type PGApi = AuthApi UserApi AdminApi
+           :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
 
 -- brittany-disable-next-binding
 type UserApi = "info" :> Get '[JSON] AppInfo
              :<|> "posts" :> QueryParam "upto" UTCTime :> QueryParam "limit" Word :> Get '[JSON] [PGPost]
-             :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
 
 -- brittany-disable-next-binding
 type AdminApi = "upload" :> MultipartForm Mem UploadRequest :> Post '[JSON] UploadResponse
