@@ -11,6 +11,7 @@ module PG.Types
   , Media
   , MediaType(..)
   , User(..)
+  , Admin(..)
   )
 where
 
@@ -27,7 +28,7 @@ import PG.Util
 
 -- | Unique ID for a post.
 newtype PostID = PostID Int
-               deriving (Show, Read, Eq)
+               deriving (Ord, Show, Read, Eq)
                deriving newtype (ToJSON, FromJSON)
 
 -- | General application instance-specific information.
@@ -40,7 +41,7 @@ data PGPostF u = PGPostF
                { pgPostId :: !PostID
                , pgPostCreatedAt :: !UTCTime
                , pgPostMedia :: ![MediaF u]
-               } deriving (Show, Functor, Foldable, Traversable)
+               } deriving (Eq, Show, Functor, Foldable, Traversable)
 
 type PGPost = PGPostF URI
 
@@ -51,17 +52,21 @@ data MediaF u = MediaF
              , mediaSrc :: !u
              , mediaWidth :: !Word
              , mediaHeight :: !Word
-             } deriving (Show, Functor, Foldable, Traversable)
+             } deriving (Eq, Show, Functor, Foldable, Traversable)
 
 type Media = MediaF URI
 
 data MediaType = MediaTypeImage
-  deriving (Show)
+  deriving (Eq, Show, Enum, Bounded)
 
 -- | Data for an user session.
 data User = User { userName :: !Text
                  , userIsAdmin :: !Bool
-                 } deriving (Show)
+                 } deriving (Eq, Show)
+
+-- | Admin-only user session.
+data Admin = Admin { adminName :: !Text
+                   } deriving (Eq, Show)
 
 $(deriveJSON (jsonOpts "PG" "pgPost") ''PGPostF)
 $(deriveJSON (jsonOpts "" "media") ''MediaF)
@@ -70,15 +75,19 @@ $(deriveJSON (jsonOpts "App" "appInfo") ''AppInfo)
 
 instance ToJWT User where
   encodeJWT User { userName, userIsAdmin } =
-    (claimSub ?~ review string userName) $
-    addClaim "admin" (Bool userIsAdmin)
-    emptyClaimsSet
+    (claimSub ?~ review string userName) $ addClaim "admin" (Bool userIsAdmin) emptyClaimsSet
 
 instance FromJWT User where
   decodeJWT claims = case claims ^. claimSub >>= preview string of
     Just sub -> case M.lookup "admin" (claims ^. unregisteredClaims) of
-      Just (Bool b) -> Right $ User { userName = sub
-                                    , userIsAdmin = b
-                                    }
-      _ -> Left "Invalid or missing admin"
+      Just (Bool b) -> Right $ User { userName = sub, userIsAdmin = b }
+      _             -> Left "Invalid or missing admin"
     _ -> Left "Invalid or missing sub"
+
+instance ToJWT Admin where
+  encodeJWT Admin { adminName } = encodeJWT User { userName = adminName, userIsAdmin = True }
+
+instance FromJWT Admin where
+  decodeJWT claims = do
+    user <- decodeJWT claims
+    if userIsAdmin user then Right Admin { adminName = userName user } else Left "User is not admin"

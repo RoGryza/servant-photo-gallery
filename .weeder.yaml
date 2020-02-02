@@ -1,0 +1,52 @@
+- package:
+  - name: servant-photo-gallery
+  - section:
+    - name: exe:servant-photo-gallery-exe
+    - message:
+      - name: Redundant build-depends entry
+      - depends:
+        - JuicyPixels
+        - aeson
+        - bytestring
+        - cryptonite
+        - directory
+        - filepath
+        - htoml
+        - http-api-data
+        - http-media
+        - http-types
+        - jose
+        - lens
+        - monad-logger
+        - mtl
+        - network-uri
+        - servant
+        - servant-auth
+        - servant-auth-server
+        - servant-multipart
+        - servant-server
+        - sqlite-simple
+        - text
+        - time
+        - unordered-containers
+        - uuid
+        - wai
+        - wai-cors
+        - warp
+  - section:
+    - name: test:servant-photo-gallery-test
+    - message:
+      - name: Redundant build-depends entry
+      - depends:
+        - JuicyPixels
+        - cryptonite
+        - htoml
+        - http-media
+        - jose
+        - lens
+        - monad-logger
+        - servant-auth
+        - servant-multipart
+        - uuid
+        - wai-cors
+

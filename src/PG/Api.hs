@@ -4,8 +4,8 @@ REST API for the gallery server.
 {-# LANGUAGE TemplateHaskell #-}
 module PG.Api
   ( PGApi
-  , TokenRequest(..)
-  , TokenResponse(..)
+  , UserApi
+  , AdminApi
   , UploadRequest(..)
   , UploadResponse(..)
   , PostRequest(..)
@@ -13,20 +13,16 @@ module PG.Api
   )
 where
 
-import Data.Aeson
 import Data.Aeson.TH
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
-import Data.Text.Encoding
 import Data.Time.Clock
 import PG.Types
 import PG.Util
 import Network.HTTP.Media ((//))
 import Servant
-import Servant.Auth.Server
 import Servant.Multipart
-import Web.FormUrlEncoded
-import qualified Data.ByteString.Lazy as BL
+import PG.Auth
 
 -- |
 -- = API
@@ -41,39 +37,22 @@ instance MimeRender JPEG ByteString where
   mimeRender _ = id
 
 -- | Gallery server API
-type PGApi = "token" :> ReqBody '[FormUrlEncoded] TokenRequest :> Post '[JSON] TokenResponse
-           :<|> Auth '[JWT] User :> ( "info" :> Get '[JSON] AppInfo
-                                      :<|> "posts" :> QueryParam "upto" UTCTime :> QueryParam "limit" Word :> Get '[JSON] [PGPost]
-                                      :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
-                                    )
-           :<|> Auth '[JWT] User :> ( "upload" :> MultipartForm Mem UploadRequest :> Post '[JSON] UploadResponse
-                                      :<|> "posts" :> ReqBody '[JSON] PostRequest :> PostCreated '[JSON] PostResponse
-                                    )
+type PGApi = AuthApi UserApi AdminApi
 
-data TokenRequest = TokenRequest { tokenRequestUsername :: !Text
-                                 , tokenRequestPassword :: !Text
-                                 }
+-- brittany-disable-next-binding
+type UserApi = "info" :> Get '[JSON] AppInfo
+             :<|> "posts" :> QueryParam "upto" UTCTime :> QueryParam "limit" Word :> Get '[JSON] [PGPost]
+             :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
 
-instance FromForm TokenRequest where
-  fromForm f = TokenRequest <$> parseUnique "username" f <*> parseUnique "password" f
-
-data TokenResponse = TokenResponse { tokenResponseAccessToken :: !ByteString
-                                   }
-
-instance ToJSON TokenResponse where
-  toJSON TokenResponse {tokenResponseAccessToken} = object
-    [ "access_token" .= (String . serializeJwt $ tokenResponseAccessToken) ]
-  toEncoding TokenResponse {tokenResponseAccessToken} = pairs
-    ( "access_token" .= (String . serializeJwt $ tokenResponseAccessToken) )
-
-serializeJwt :: ByteString -> Text
-serializeJwt = decodeUtf8 . BL.toStrict
+-- brittany-disable-next-binding
+type AdminApi = "upload" :> MultipartForm Mem UploadRequest :> Post '[JSON] UploadResponse
+                :<|> "posts" :> ReqBody '[JSON] PostRequest :> PostCreated '[JSON] PostResponse
 
 data UploadRequest = UploadRequest { uploadRequestData :: !ByteString
                                    }
 
 instance FromMultipart Mem UploadRequest where
-  fromMultipart MultipartData { files = [ FileData { fdFileCType, fdPayload } ] }
+  fromMultipart MultipartData { files = [FileData { fdFileCType, fdPayload }] }
     | fdFileCType == "image/jpeg" = Just $ UploadRequest fdPayload
   fromMultipart _ = Nothing
 
@@ -89,7 +68,6 @@ data PostResponse = PostResponse { postResponsePostId :: !PostID
                                  , postResponseCreatedAt :: !UTCTime
                                  }
 
-$(deriveJSON (jsonOpts "" "tokenRequest") ''TokenRequest)
 $(deriveJSON (jsonOpts "" "uploadResponse") ''UploadResponse)
 $(deriveJSON (jsonOpts "" "postRequest") ''PostRequest)
 $(deriveJSON (jsonOpts "" "postResponse") ''PostResponse)

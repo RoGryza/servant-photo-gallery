@@ -13,7 +13,6 @@ import PG.Config
 import Network.Wai
 import Network.Wai.Middleware.Cors
 import Network.Wai.Handler.Warp
-import Servant.Auth.Server
 import System.Directory
 import System.Environment
 import System.IO
@@ -29,16 +28,15 @@ pgMain = do
     [] -> return "gallery.toml"
     _  -> error "Usage: gallery [config_file]"
   cfgRes <- readConfig cfgPath
-  key    <- generateKey
   let
     cfg = case cfgRes of
       Right c -> c
       Left  e -> error $ show e
-    jwtCfg    = defaultJWTSettings key
-    cookieCfg = defaultCookieSettings
+  authCfg <- cfgAuth cfg
+  env     <- cfgEnv cfg
   putStrLn $ "Starting gallery at " ++ show (cfgActualBaseUrl cfg)
   putStrLn $ "Showing media from " ++ cfgMediaPath cfg
-  let app = pgApp cookieCfg jwtCfg cfg
+  let app = pgApp authCfg env
   runSettings (cfgWarpSettings cfg) $ corsWithContentType app
 
 readConfig :: FilePath -> IO (Either Text Config)

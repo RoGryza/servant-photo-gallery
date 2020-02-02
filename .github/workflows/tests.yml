@@ -1,0 +1,46 @@
+name: Haskell CI
+on:
+  push:
+    branches: [master]
+  pull_request: {}
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: '3.7'
+    - name: cache stack
+      uses: actions/cache@v1
+      with:
+        path: /home/runner/.stack
+        key: build-cache-stack
+    - name: cache stack-work
+      uses: actions/cache@v1
+      with:
+        path: .stack-work
+        key: build-cache-stack-work-${{ hashFiles('stack.yaml.lock') }}
+        restore-keys: |
+          build-cache-stack-work
+    - name: cache CI tools
+      uses: actions/cache@v1
+      with:
+        path: .local-bin
+        key: build-cache-local-bin
+    - name: Stack setup
+      run: stack setup
+    - name: Install CI tools
+      run: stack --local-bin-path=.local-bin install brittany hlint weeder
+    - name: Build dependencies
+      run: stack build --dependencies-only --fast
+    - name: Build project
+      run: stack build --fast
+    - name: Run tests
+      run: stack test --fast
+    - name: Run linters
+      # run: scripts/lint.py
+      run: .local-bin/weeder . && .local-bin/hlint . && .local-bin/brittany --check-mode **/*.hs

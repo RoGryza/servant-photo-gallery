@@ -1,5 +1,7 @@
 # Servant Photo Gallery
 
+![Build Status](https://github.com/RoGryza/servant-photo-gallery/workflows/Haskell%20CI/badge.svg)
+
 Blog-like photo gallery API server.
 
 ## Quickstart
@@ -28,7 +30,6 @@ to `gallery.toml`. For a list of available settings check <src/PG/Config.hs>.
 
 ## Roadmap to v1.0
 
-- Unit tests
 - Allow passing configuration parameters through environment variables and the CLI.
 - OpenAPI specs
 - Remaining CRUD operations (delete and update posts)

@@ -16,11 +16,44 @@ category:            Program
 description:         Please see the README on GitHub at <https://github.com/githubrogryza/servant-photo-gallery#readme>
 
 dependencies:
-- base >= 4.7 && < 5
-- Cabal
-- polysemy-plugin
+  - base >= 4.7 && < 5
+  - JuicyPixels
+  - aeson
+  - bytestring
+  - cryptonite
+  - directory
+  - filepath
+  - htoml
+  - http-api-data
+  - http-media
+  - http-types
+  - jose
+  - lens
+  - monad-logger
+  - mtl
+  - network-uri
+  - servant
+  - servant-auth
+  - servant-auth-server
+  - servant-multipart
+  - servant-server
+  - sqlite-simple
+  - text
+  - time
+  - unordered-containers
+  - uuid
+  - wai
+  - wai-cors
+  - warp
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wredundant-constraints
 
 default-extensions:
+  - ConstraintKinds
   - DataKinds
   - DeriveAnyClass
   - DeriveFoldable
@@ -48,42 +81,6 @@ default-extensions:
 
 library:
   source-dirs: src
-  dependencies:
-    - JuicyPixels
-    - aeson
-    - bytestring
-    - cryptonite
-    - directory
-    - filepath
-    - htoml
-    - http-api-data
-    - http-media
-    - http-types
-    - jose
-    - lens
-    - mtl
-    - network-uri
-    - polysemy
-    - servant
-    - servant-auth
-    - servant-auth-server
-    - servant-multipart
-    - servant-server
-    - sqlite-simple
-    - text
-    - time
-    - unordered-containers
-    - uuid
-    - wai
-    - wai-cors
-    - warp
-  ghc-options:
-    - -Wall
-    - -Wcompat
-    - -Wincomplete-record-updates
-    - -Wincomplete-uni-patterns
-    - -Wredundant-constraints
-    - -fplugin=Polysemy.Plugin
 
 executables:
   servant-photo-gallery-exe:
@@ -105,4 +102,12 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - containers
+    - hedgehog
+    - hedgehog-corpus
+    - http-client
+    - mmorph
+    - servant-auth-client
+    - servant-client
     - servant-photo-gallery
+    - template-haskell
