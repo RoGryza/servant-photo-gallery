@@ -39,7 +39,7 @@ jobs:
     - name: Y U NO WORK
       run: ls -A
     - name: Test stuff
-      run: cat .weeder.yaml
+      run: .local-bin/weeder --version
     - name: Run linters
       # run: scripts/lint.py
       run: .local-bin/weeder . && .local-bin/hlint . && .local-bin/brittany --check-mode **/*.hs
