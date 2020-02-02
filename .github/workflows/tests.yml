@@ -36,6 +36,10 @@ jobs:
       run: stack build --dependencies-only --fast
     - name: Build project
       run: stack build --fast
+    - name: Y U NO WORK
+      run: ls -A
+    - name: Test stuff
+      run: cat .weeder.yaml
     - name: Run linters
       # run: scripts/lint.py
       run: .local-bin/weeder . && .local-bin/hlint . && .local-bin/brittany --check-mode **/*.hs
