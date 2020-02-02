@@ -32,6 +32,8 @@ jobs:
     - name: Build project
       run: stack build --fast
     - name: Run linters
+      env:
+        PATH: $PATH:$(stack path --local-bin)
       run: scripts/lint.py
     - name: Run tests
       run: stack test --fast
