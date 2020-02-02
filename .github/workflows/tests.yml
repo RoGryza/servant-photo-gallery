@@ -34,3 +34,12 @@ jobs:
       run: stack --local-bin-path=.local-bin install brittany hlint weeder
     - name: Build dependencies
       run: stack build --dependencies-only --fast
+    - name: Build project
+      run: stack build --fast
+    - name: Run linters
+      env:
+        PATH: ${{ env.PATH }}:.local-bin
+      # run: scripts/lint.py
+      run: weeder . && hlint . && brittany --check-mode **/*.hs
+    - name: Run tests
+      run: stack test --fast
