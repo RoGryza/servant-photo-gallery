@@ -37,9 +37,7 @@ jobs:
     - name: Build project
       run: stack build --fast
     - name: Run linters
-      env:
-        PATH: ${{ env.PATH }}:.local-bin
       # run: scripts/lint.py
-      run: weeder . && hlint . && brittany --check-mode **/*.hs
+      run: .local-bin/weeder . && .local-bin/hlint . && .local-bin/brittany --check-mode **/*.hs
     - name: Run tests
       run: stack test --fast
