@@ -1,5 +1,7 @@
 # Servant Photo Gallery
 
+![Build Status](https://github.com/RoGryza/servant-photo-gallery/workflows/Haskell%20CI/badge.svg)
+
 Blog-like photo gallery API server.
 
 ## Quickstart
