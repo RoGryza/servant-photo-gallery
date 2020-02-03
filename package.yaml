@@ -41,7 +41,6 @@ dependencies:
   - text
   - time
   - unordered-containers
-  - uuid
   - wai
   - wai-cors
   - warp
