@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9c62a818a0cea7d881c7ca4c5b6172e1e3d85c4329697015992b3231527ae6c5
+-- hash: 746dc99f19fc71a4f430e7b2b201fd9764172effd7d69177d4ef833291774222
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -72,7 +72,6 @@ library
     , text
     , time
     , unordered-containers
-    , uuid
     , wai
     , wai-cors
     , warp
@@ -113,7 +112,6 @@ executable servant-photo-gallery-exe
     , text
     , time
     , unordered-containers
-    , uuid
     , wai
     , wai-cors
     , warp
@@ -168,7 +166,6 @@ test-suite servant-photo-gallery-test
     , text
     , time
     , unordered-containers
-    , uuid
     , wai
     , wai-cors
     , warp
