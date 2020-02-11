@@ -36,6 +36,8 @@ instance Accept JPEG where
 instance MimeRender JPEG ByteString where
   mimeRender _ = id
 
+-- brittany-disable-next-binding
+
 -- | Gallery server API
 type PGApi = AuthApi UserApi AdminApi
            :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString

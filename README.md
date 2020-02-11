@@ -25,12 +25,15 @@ Showing media from static/media/
 
 ## Configuration
 
-The server accepts the path to a configuration file as the first command line argument, it defaults
-to `gallery.toml`. For a list of available settings check <src/PG/Config.hs>.
+The application accepts parameters from a config file and from the command line. See the builtin
+help for available parameters:
+
+``` shellsession
+$ servant-photo-gallery --help
+```
 
 ## Roadmap to v1.0
 
-- Allow passing configuration parameters through environment variables and the CLI.
 - OpenAPI specs
 - Remaining CRUD operations (delete and update posts)
 - Media caching and streaming upload/download of files

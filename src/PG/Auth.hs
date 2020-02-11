@@ -48,9 +48,10 @@ data TokenRequest = TokenRequest { tokenRequestUsername :: !Text
   deriving (Eq, Show)
 
 instance ToForm TokenRequest where
-  toForm r = fromList [ ("username", toQueryParam $ tokenRequestUsername r)
-                      , ("password", toQueryParam $ tokenRequestPassword r)
-                      ]
+  toForm r = fromList
+    [ ("username", toQueryParam $ tokenRequestUsername r)
+    , ("password", toQueryParam $ tokenRequestPassword r)
+    ]
 
 instance FromForm TokenRequest where
   fromForm f = TokenRequest <$> parseUnique "username" f <*> parseUnique "password" f
@@ -66,8 +67,8 @@ instance ToJSON TokenResponse where
     pairs ("access_token" .= (String . serializeJwt $ tokenResponseAccessToken))
 
 instance FromJSON TokenResponse where
-  parseJSON = withObject "TokenRespons" $ \v ->
-    TokenResponse <$> (BL.fromStrict . encodeUtf8 <$> v .: "access_token")
+  parseJSON = withObject "TokenRespons"
+    $ \v -> TokenResponse <$> (BL.fromStrict . encodeUtf8 <$> v .: "access_token")
 
 serializeJwt :: ByteString -> Text
 serializeJwt = decodeUtf8 . BL.toStrict

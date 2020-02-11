@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-|
 Server configuration data and related functions.
 -}
@@ -8,14 +9,15 @@ module PG.Config
   , defaultConfig
   , cfgActualBaseUrl
   , cfgWarpSettings
-  , parseConfig
+  , pgInfo
   )
 where
 
+import Configuration.Utils
 import Control.Monad.IO.Class
 import Control.Monad.Logger
-import Data.Aeson
-import Data.Aeson.Types
+import Data.Aeson.TH
+import Control.Lens
 import Data.Maybe
 import Data.String
 import Data.Text (Text)
@@ -32,9 +34,10 @@ import PG.Auth
 import PG.Env
 import PG.Effects.Auth
 import PG.Types
+import PG.Orphans ()
+import PG.Util
 import Servant.Auth.Server
 import System.IO
-import Text.Toml
 
 cfgAuth :: Config -> IO AuthConfig
 cfgAuth Config { cfgSessionDuration } = do
@@ -58,7 +61,12 @@ cfgEnv cfg@Config { cfgLogLevel, cfgDatabasePath, cfgMediaPath, cfgHtpasswd, cfg
         }
       }
 
--- | Server configuration data. Usually read from "gallery.toml".
+-- | Returns the base url for a config or a default based on host and port
+cfgActualBaseUrl :: Config -> URI
+cfgActualBaseUrl Config { cfgBaseUrl, cfgHost, cfgPort } =
+  fromMaybe (fromJust . parseURI $ concat ["http://", cfgHost, ":", show cfgPort]) cfgBaseUrl
+
+-- | Server configuration data.
 data Config = Config
             { cfgSessionDuration :: !NominalDiffTime -- ^ How long before user sesions expire
             , cfgLogLevel :: !LogLevel -- ^ Minimum log level
@@ -73,78 +81,98 @@ data Config = Config
             , cfgMaxPageSize :: !Word -- ^ Max posts returned per API call
             } deriving (Show)
 
-instance FromJSON Config where
-  parseJSON (Object v) = do
-    rawBaseUrl <- v .:? "base_url"
-    let
-      baseUrl = case rawBaseUrl of
-        Just u  -> Just <$> jsonUri u
-        Nothing -> return Nothing
-    rawLogLevel <- v .:? "log_level"
-    let
-      logLevel = case rawLogLevel of
-        Just u  -> Just <$> jsonLogLevel u
-        Nothing -> return Nothing
-    Config
-      <$> v
-      .:? "session_duration"
-      .!= cfgSessionDuration defaultConfig
-      <*> logLevel
-      .!= cfgLogLevel defaultConfig
-      <*> baseUrl
-      <*> v
-      .:? "host"
-      .!= cfgHost defaultConfig
-      <*> v
-      .:? "port"
-      .!= cfgPort defaultConfig
-      <*> v
-      .:? "htpasswd"
-      .!= cfgHtpasswd defaultConfig
-      <*> v
-      .:? "media_path"
-      .!= cfgMediaPath defaultConfig
-      <*> v
-      .:? "database_path"
-      .!= cfgDatabasePath defaultConfig
-      <*> v
-      .:? "title"
-      .!= cfgTitle defaultConfig
-      <*> v
-      .:? "default_page_size"
-      .!= cfgDefaultPageSize defaultConfig
-      <*> v
-      .:? "max_page_size"
-      .!= cfgMaxPageSize defaultConfig
-   where
-    jsonUri :: Value -> Parser URI
-    jsonUri (String s) = case parseURI (T.unpack s) of
-      Just u  -> return u
-      Nothing -> fail $ "Invalid URI: " <> T.unpack s
-    jsonUri u = typeMismatch "String" u
+makeLensesWith abbreviatedFields ''Config
 
-    jsonLogLevel :: Value -> Parser LogLevel
-    jsonLogLevel (String "debug") = return LevelDebug
-    jsonLogLevel (String "info" ) = return LevelInfo
-    jsonLogLevel (String "warn" ) = return LevelWarn
-    jsonLogLevel (String "error") = return LevelError
-    jsonLogLevel (String s      ) = fail $ "Invalid log level " <> T.unpack s
-    jsonLogLevel x                = typeMismatch "String" x
-  parseJSON v = typeMismatch "Object" v
+$(deriveToJSON (jsonOpts "" "cfg") ''Config)
 
--- | Returns the base url for a config or a default based on host and port
-cfgActualBaseUrl :: Config -> URI
-cfgActualBaseUrl Config { cfgBaseUrl, cfgHost, cfgPort } =
-  fromMaybe (fromJust . parseURI $ concat ["http://", cfgHost, ":", show cfgPort]) cfgBaseUrl
+-- | configuration-tools program info
+pgInfo :: ProgramInfo Config
+pgInfo = programInfo "Photo Gallery" configParser defaultConfig
 
--- | Parse a TOML configuration file, using the defaults for omitted values. Returns $Left msg$ on
--- error.
-parseConfig :: Text -> Either Text Config
-parseConfig s = case parseTomlDoc "" s of
-  Right raw -> case fromJSON (toJSON raw) of
-    Success c -> Right c
-    Error   e -> Left $ T.pack e
-  Left e -> Left . T.pack . show $ e
+instance FromJSON (Config -> Config) where
+  parseJSON = withObject "Config" $ \o ->
+    id
+      <$< sessionDuration
+      ..: "session_duration"
+      %   o
+      <*< logLevel
+      ..: "log_level"
+      %   o
+      <*< baseUrl
+      ..: "base_url"
+      %   o
+      <*< host
+      ..: "host"
+      %   o
+      <*< port
+      ..: "port"
+      %   o
+      <*< htpasswd
+      ..: "htpasswd"
+      %   o
+      <*< mediaPath
+      ..: "media_path"
+      %   o
+      <*< databasePath
+      ..: "database_path"
+      %   o
+      <*< title
+      ..: "title"
+      %   o
+      <*< defaultPageSize
+      ..: "default_page_size"
+      %   o
+      <*< maxPageSize
+      ..: "max_page_size"
+      %   o
+
+configParser :: MParser Config
+configParser =
+  id
+    <$< sessionDuration
+    .:: option (fromInteger <$> auto)
+    %   long "session-duration"
+    <>  help "How long before user sessions expire, in seconds"
+    <*< logLevel
+    .:: option (maybeReader (parseLogLevel . T.pack))
+    %   long "log-level"
+    <>  help "Minimum log level"
+    <*< baseUrl
+    .:: option (Just <$> maybeReader parseURI)
+    %   long "base-url"
+    <>  help "Base URL for media links"
+    <*< host
+    .:: strOption
+    %   long "host"
+    <>  help "Host to bind to"
+    <*< port
+    .:: option auto
+    %   long "port"
+    <>  help "Port to listen on"
+    <*< htpasswd
+    .:: strOption
+    %   long "htpasswd"
+    <>  help "Path to htpasswd file"
+    <*< mediaPath
+    .:: strOption
+    %   long "media-path"
+    <>  help "Path where to store uploaded media"
+    <*< databasePath
+    .:: strOption
+    %   long "database-path"
+    <>  help "Path to post database"
+    <*< title
+    .:: strOption
+    %   long "title"
+    <>  help "Application title, used by frontends"
+    <*< defaultPageSize
+    .:: option auto
+    %   long "default-page-size"
+    <>  help "Default size for post pages"
+    <*< maxPageSize
+    .:: option auto
+    %   long "max-page-size"
+    <>  help "Max posts returned per page"
 
 -- | Default configuration values
 defaultConfig :: Config

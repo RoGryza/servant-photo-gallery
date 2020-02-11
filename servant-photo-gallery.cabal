@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 746dc99f19fc71a4f430e7b2b201fd9764172effd7d69177d4ef833291774222
+-- hash: 996f7497a37d940d28cba7e0ecfd40db44381ba49f91bd0850ed68c8b043a8cf
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -37,6 +37,7 @@ library
       PG.Effects.FileStore
       PG.Effects.PostDatabase
       PG.Env
+      PG.Orphans
       PG.Server
       PG.Types
       PG.Util
@@ -51,10 +52,10 @@ library
     , aeson
     , base >=4.7 && <5
     , bytestring
+    , configuration-tools
     , cryptonite
     , directory
     , filepath
-    , htoml
     , http-api-data
     , http-media
     , http-types
@@ -63,6 +64,7 @@ library
     , monad-logger
     , mtl
     , network-uri
+    , optparse-applicative
     , servant
     , servant-auth
     , servant-auth-server
@@ -90,10 +92,10 @@ executable servant-photo-gallery-exe
     , aeson
     , base >=4.7 && <5
     , bytestring
+    , configuration-tools
     , cryptonite
     , directory
     , filepath
-    , htoml
     , http-api-data
     , http-media
     , http-types
@@ -102,6 +104,7 @@ executable servant-photo-gallery-exe
     , monad-logger
     , mtl
     , network-uri
+    , optparse-applicative
     , servant
     , servant-auth
     , servant-auth-server
@@ -125,6 +128,7 @@ test-suite servant-photo-gallery-test
       Effects.Auth
       Effects.FileStore
       Effects.PostDatabase
+      Orphans
       Types
       Paths_servant_photo_gallery
   hs-source-dirs:
@@ -136,13 +140,13 @@ test-suite servant-photo-gallery-test
     , aeson
     , base >=4.7 && <5
     , bytestring
+    , configuration-tools
     , containers
     , cryptonite
     , directory
     , filepath
     , hedgehog
     , hedgehog-corpus
-    , htoml
     , http-api-data
     , http-client
     , http-media
@@ -153,6 +157,7 @@ test-suite servant-photo-gallery-test
     , monad-logger
     , mtl
     , network-uri
+    , optparse-applicative
     , servant
     , servant-auth
     , servant-auth-client

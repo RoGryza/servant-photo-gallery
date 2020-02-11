@@ -8,10 +8,10 @@
         - JuicyPixels
         - aeson
         - bytestring
+        - configuration-tools
         - cryptonite
         - directory
         - filepath
-        - htoml
         - http-api-data
         - http-media
         - http-types
@@ -20,6 +20,7 @@
         - monad-logger
         - mtl
         - network-uri
+        - optparse-applicative
         - servant
         - servant-auth
         - servant-auth-server
@@ -39,12 +40,13 @@
       - name: Redundant build-depends entry
       - depends:
         - JuicyPixels
+        - configuration-tools
         - cryptonite
-        - htoml
         - http-media
         - jose
         - lens
         - monad-logger
+        - optparse-applicative
         - servant-auth
         - servant-multipart
         - uuid
