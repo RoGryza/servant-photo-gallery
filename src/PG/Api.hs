@@ -6,6 +6,7 @@ module PG.Api
   ( PGApi
   , UserApi
   , AdminApi
+  , MediaImage(..)
   , UploadRequest(..)
   , UploadResponse(..)
   , PostRequest(..)
@@ -30,17 +31,20 @@ import PG.Auth
 -- | JPEG image content type
 data JPEG
 
+newtype MediaImage = MediaImage ByteString
+  deriving (Eq, Show)
+
 instance Accept JPEG where
   contentType _ = "image" // "jpeg"
 
-instance MimeRender JPEG ByteString where
-  mimeRender _ = id
+instance MimeRender JPEG MediaImage where
+  mimeRender _ (MediaImage b) = b
 
 -- brittany-disable-next-binding
 
 -- | Gallery server API
 type PGApi = AuthApi UserApi AdminApi
-           :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] ByteString
+           :<|> "static" :> "media" :> CaptureAll "path" FilePath :> Get '[JPEG] MediaImage
 
 -- brittany-disable-next-binding
 type UserApi = "info" :> Get '[JSON] AppInfo

@@ -13,7 +13,6 @@ import Control.Monad
 import Control.Monad.Logger
 import Control.Monad.Reader
 import Crypto.Hash
-import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.List
@@ -58,11 +57,11 @@ getPostsHandler maybeUpto maybeLimit = do
   posts <- fetchPosts upto limit
   mapM (mapM fileURL) posts
 
-getMediaFile :: [FilePath] -> App ByteString
+getMediaFile :: [FilePath] -> App MediaImage
 getMediaFile xs = do
   let fileName = mconcat $ intersperse "/" xs
   exists <- fileExists fileName
-  if exists then fetchFile fileName else throwError err404
+  if exists then MediaImage <$> fetchFile fileName else throwError err404
 
 postUpload :: UploadRequest -> App UploadResponse
 postUpload (UploadRequest payload) = do

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 996f7497a37d940d28cba7e0ecfd40db44381ba49f91bd0850ed68c8b043a8cf
+-- hash: 717e10a78ac70697f4e528517481b2fddc8638334526143a0fad94bf541d7c20
 
 name:           servant-photo-gallery
 version:        0.1.0.0
@@ -39,6 +39,7 @@ library
       PG.Env
       PG.Orphans
       PG.Server
+      PG.Swagger
       PG.Types
       PG.Util
   other-modules:
@@ -68,9 +69,12 @@ library
     , servant
     , servant-auth
     , servant-auth-server
+    , servant-auth-swagger
     , servant-multipart
     , servant-server
+    , servant-swagger
     , sqlite-simple
+    , swagger2
     , text
     , time
     , unordered-containers
@@ -108,10 +112,13 @@ executable servant-photo-gallery-exe
     , servant
     , servant-auth
     , servant-auth-server
+    , servant-auth-swagger
     , servant-multipart
     , servant-photo-gallery
     , servant-server
+    , servant-swagger
     , sqlite-simple
+    , swagger2
     , text
     , time
     , unordered-containers
@@ -162,11 +169,14 @@ test-suite servant-photo-gallery-test
     , servant-auth
     , servant-auth-client
     , servant-auth-server
+    , servant-auth-swagger
     , servant-client
     , servant-multipart
     , servant-photo-gallery
     , servant-server
+    , servant-swagger
     , sqlite-simple
+    , swagger2
     , template-haskell
     , text
     , time

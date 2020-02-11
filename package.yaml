@@ -36,8 +36,11 @@ dependencies:
   - servant
   - servant-auth
   - servant-auth-server
+  - servant-auth-swagger
   - servant-multipart
   - servant-server
+  - servant-swagger
+  - swagger2
   - sqlite-simple
   - text
   - time
